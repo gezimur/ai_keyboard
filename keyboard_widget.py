@@ -17,6 +17,9 @@ from kivy.properties import StringProperty, NumericProperty, ListProperty, Boole
 from kivy.core.window import Window
 from kivy.uix.behaviors import ButtonBehavior
 
+# Import FeaturesPanel from features_panel.py
+from features_panel import FeaturesPanel
+
 
 # ==================== COLOR DEFINITIONS ====================
 COLORS = {
@@ -275,7 +278,7 @@ class ChipButton(Label):
         self.valign = 'middle'
         self.bind(size=self.update_text_size)
     
-    def update_text_size(self):
+    def update_text_size(self, *args):
         """Update text_size to match widget size for proper text alignment"""
         self.text_size = self.size
 
@@ -409,12 +412,13 @@ class KeyboardRows(BoxLayout):
     """
     current_mode = StringProperty('ABC')  # ABC, abc, 123, SYM, Emoji
     
-    def __init__(self, **kwargs):
+    def __init__(self, on_ai_button=None, **kwargs):
         super().__init__(**kwargs)
         self.orientation = 'vertical'
         self.spacing = 6
         self.padding = [3, 0, 3, 6]
         self.is_shifted = False  # Track shift state (False = lowercase, True = uppercase)
+        self.on_ai_button = on_ai_button  # Callback for AI button
         
         # Layout definitions
         self.layouts = {
@@ -565,6 +569,18 @@ class KeyboardRows(BoxLayout):
         lang_btn.bind(on_release=self.toggle_emoji)
         row.add_widget(lang_btn)
         
+        # AI Features button (54px width)
+        ai_btn = KeyButton(
+            text='AI',
+            size_hint_x=None,
+            width=54,
+            key_type='special',
+            is_accent=True  # Highlight AI button
+        )
+        if self.on_ai_button:
+            ai_btn.bind(on_release=self.on_ai_button)
+        row.add_widget(ai_btn)
+        
         # Space bar (flexible, min 180px)
         # AI INTEGRATION HOOK: Space bar long-press for voice/AI input
         space_btn = KeyButton(
@@ -630,6 +646,7 @@ class KeyboardContainer(FloatLayout):
     Root keyboard container with dark background (#1C1C1E)
     Includes safe-area bottom padding (34px)
     Total size: 390x(280+34)=314px
+    Can switch between keyboard and features panel
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -646,7 +663,7 @@ class KeyboardContainer(FloatLayout):
         self.bind(pos=self.update_bg, size=self.update_bg)
         
         # Main layout container
-        main_layout = BoxLayout(
+        self.main_layout = BoxLayout(
             orientation='vertical',
             size_hint=(1, None),
             height=284,  # Keyboard (244) + suggest bar (40) + safe area (34)
@@ -656,12 +673,12 @@ class KeyboardContainer(FloatLayout):
         
         # Suggest bar
         # AI INTEGRATION HOOK: Real-time ChatGPT suggestions
-        suggest_bar = SuggestBar()
-        main_layout.add_widget(suggest_bar)
+        self.suggest_bar = SuggestBar()
+        self.main_layout.add_widget(self.suggest_bar)
         
-        # Keyboard rows
-        keyboard_rows = KeyboardRows()
-        main_layout.add_widget(keyboard_rows)
+        # Keyboard rows (with AI button callback)
+        self.keyboard_rows = KeyboardRows(on_ai_button=self.show_features_panel)
+        self.main_layout.add_widget(self.keyboard_rows)
         
         # Emoji panel (hidden by default)
         # emoji_panel = EmojiPanel()
@@ -674,9 +691,38 @@ class KeyboardContainer(FloatLayout):
             safe_bg = RoundedRectangle(pos=safe_area.pos, size=safe_area.size)
             safe_area.bind(pos=lambda i, v: setattr(safe_bg, 'pos', v))
             safe_area.bind(size=lambda i, v: setattr(safe_bg, 'size', v))
-        main_layout.add_widget(safe_area)
+        self.main_layout.add_widget(safe_area)
         
-        self.add_widget(main_layout)
+        self.add_widget(self.main_layout)
+        
+        # Store references for switching
+        self.features_panel = None
+        self.is_showing_features = False
+    
+    def show_features_panel(self, *args):
+        """Switch from keyboard to features panel"""
+        if not self.is_showing_features:
+            # Hide keyboard layout
+            self.remove_widget(self.main_layout)
+            
+            # Create and show features panel
+            self.features_panel = FeaturesPanel(on_close=self.show_keyboard)
+            self.add_widget(self.features_panel)
+            
+            self.is_showing_features = True
+    
+    def show_keyboard(self, *args):
+        """Switch from features panel back to keyboard"""
+        if self.is_showing_features:
+            # Remove features panel
+            if self.features_panel:
+                self.remove_widget(self.features_panel)
+                self.features_panel = None
+            
+            # Show keyboard layout
+            self.add_widget(self.main_layout)
+            
+            self.is_showing_features = False
     
     def update_bg(self, *args):
         self.bg_rect.pos = self.pos
