@@ -9,6 +9,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.image import Image
 from kivy.graphics import Color, RoundedRectangle, Line, Rectangle
 from kivy.graphics.texture import Texture
 from kivy.graphics.stencil_instructions import StencilPush, StencilUse, StencilUnUse, StencilPop
@@ -25,20 +26,28 @@ from features_panel import FeaturesPanel
 COLORS = {
     'bg_keyboard': (28/255, 28/255, 30/255, 1),      # #1C1C1E
     'bg_panel': (30/255, 31/255, 35/255, 1),         # #1E1F23
+
     'key_normal': (44/255, 44/255, 46/255, 1),       # #2C2C2E - для служебных клавиш
-    'key_light': (142/255, 142/255, 147/255, 1),     # #8E8E93 - светлые буквенные клавиши
     'key_pressed': (58/255, 58/255, 60/255, 1),      # #3A3A3C
+
+    'key_normal_light': (142/255, 142/255, 147/255, 1),     # #8E8E93 - светлые буквенные клавиши\
     'key_pressed_light': (170/255, 170/255, 175/255, 1),  # Светлый pressed для обычных клавиш
-    'key_disabled': (31/255, 31/255, 33/255, 1),     # #1F1F21
+
+    'key_normal_dark': (28/255, 28/255, 30/255, 1),     # #8E8E93 - светлые буквенные клавиши\
+    'key_pressed_dark': (44/255, 44/255, 44/255, 1),  # Светлый pressed для обычных клавиш
+
+    'text_normal_light': (142/255, 142/255, 147/255, 1), # Светлый текст для обычных клавиш
+    'text_pressed_light': (1, 1, 1, 1), # Светлый текст для pressed обычных клавиш
+
     'text_normal': (242/255, 242/255, 247/255, 1),   # #F2F2F7
-    'text_normal_dark': (28/255, 28/255, 30/255, 1), # Темный текст для светлых клавиш
-    'text_pressed': (1, 1, 1, 1),                    # #FFFFFF
+    'text_pressed': (1, 1, 1, 1), # Темный текст для светлых клавиш
+
+    'text_normal_dark': (1, 1, 1, 1),                    # #FFFFFF
     'text_pressed_dark': (10/255, 10/255, 12/255, 1), # Темный текст для pressed светлых клавиш
-    'text_disabled': (142/255, 142/255, 147/255, 1), # #8E8E93
+
     'accent_purple': (123/255, 97/255, 255/255, 1),  # #7B61FF
     'accent_cyan': (0, 209/255, 255/255, 1),         # #00D1FF
 }
-
 
 # ==================== GRADIENT HELPER ====================
 def create_gradient_texture(color1, color2, width=256, height=1):
@@ -67,667 +76,436 @@ def create_gradient_texture(color1, color2, width=256, height=1):
     texture.blit_buffer(bytes(pixels), colorfmt='rgba', bufferfmt='ubyte')
     return texture
 
+class ButtoIcon:
+    def __init__(self, icon_normal = None, icon_checked = None):
+        self.icon_normal = icon_normal
+        self.icon_checked = icon_checked
 
-# ==================== KEY BUTTON COMPONENT ====================
-class KeyButton(ButtonBehavior, Widget):
-    """
-    Custom keyboard key with rounded rectangle, state management, and press animation.
-    Supports normal/pressed/disabled states with 0.97 scale animation (70ms).
-    """
-    text = StringProperty('')
-    state_color = ListProperty(COLORS['key_normal'])
-    text_color = ListProperty(COLORS['text_normal'])
-    is_accent = BooleanProperty(False)
-    is_accent_bg = BooleanProperty(False)
-    is_disabled = BooleanProperty(False)
-    key_type = StringProperty('char')  # char, special, space, enter
-    
-    def __init__(self, **kwargs):
+    def hasIcon(self, is_checked: bool):
+        if is_checked and self.icon_checked is not None:
+            return True
+        elif self.icon_normal is not None:
+            return True
+        else:
+            return False
+
+    def getIcon(self, is_checked: bool):
+        if is_checked and self.icon_checked is not None:
+            return self.icon_checked
+        elif self.icon_normal is not None:
+            return self.icon_normal
+        else:
+            return None
+
+class ButtonColor:
+    def __init__(self, color_normal = tuple([0,0,0,0]), color_checked = tuple([0,0,0,0])):
+        self.color_normal = color_normal
+        self.color_checked = color_checked
+
+    def hasColor(self, is_checked: bool):
+        if is_checked:
+            return self.color_checked is not None
+        else:
+            return self.color_normal is not None
+
+    def getColor(self, is_checked: bool):
+        if is_checked:
+            return self.color_checked
+        else:
+            return self.color_normal
+
+class StyleMap:
+    def __init__(self, icon: ButtoIcon = None, background: ButtonColor = ButtonColor(), border_color: ButtonColor = ButtonColor(), border_radius: int = 0, border_width: int = 0, text: str = None, font_size: int = 0, font_color: ButtonColor = ButtonColor()):
+        self.icon               = ButtoIcon()
+        self.background         = background
+        self.border_color       = border_color
+        self.border_radius      = border_radius
+        self.border_width       = border_width
+        self.text               = text
+        self.font_size          = font_size
+        self.font_color         = font_color
+
+class ButtonWithIcon(ButtonBehavior, Widget):
+    def __init__(self, style: StyleMap, **kwargs):
         super().__init__(**kwargs)
-        # Set initial colors based on key type
-        # Light keys: char, space
-        # Accent keys: enter (purple background)
-        # Dark keys: shift, del, lang, 123/ABC, #+= (special)
-        if self.key_type == 'enter':
-            self.state_color = COLORS['accent_purple']
-            self.is_light_key = False
-            self.is_accent_bg = True  # Акцентный фон для Enter
-        elif self.key_type in ('char', 'space'):
-            self.state_color = COLORS['key_light']
-            self.is_light_key = True
-            self.is_accent_bg = False
-        else:
-            self.state_color = COLORS['key_normal']
-            self.is_light_key = False
-            self.is_accent_bg = False
+        self.width = 20
+        self.height = 20
+        self.size_hint=(1,1)
         
-        self.text_color = COLORS['text_normal']  # Светло-серый текст для всех
+        self.style = style
+        self.is_checked = False
 
-        #subscribe on widget params changes
-        self.bind(pos=self.update_canvas)
-        self.bind(size=self.update_canvas)
-        self.bind(state_color=self.update_canvas)
-        self.bind(is_accent=self.update_canvas)
+        self.icon = None
+        self.text = None
+
+        self.bind(pos=self.change_view)
+        self.bind(size=self.change_view)
+
+        self.init_canvas()
+        self.change_view()
+
+    def change_view(self, *args):
+        self.main_rect.pos = self.pos
+        self.main_rect.size = self.size
+
+        if self.border_line is not None:
+            self.border_line.rounded_rectangle = (self.x, self.y, self.width, self.height, self.style.border_radius)
         
-        #set drawing instructions for background and save it to change after 
-        with self.canvas:
-            if self.is_accent_bg:
-                # Gradient background with rounded corners using stencil
-                # Create stencil mask for rounded corners
-                StencilPush()
-                self.stencil_rect = RoundedRectangle(
-                    pos=self.pos,
-                    size=self.size,
-                    radius=[5]
-                )
-                StencilUse()
-                
-                # Draw gradient inside the stencil
-                self.bg_color = Color(1, 1, 1, 1)  # White color for texture
-                gradient_texture = create_gradient_texture(
-                    COLORS['accent_purple'],
-                    COLORS['accent_cyan']
-                )
-                self.bg_rect = Rectangle(
-                    pos=self.pos,
-                    size=self.size,
-                    texture=gradient_texture
-                )
-                
-                StencilUnUse()
-                # Redraw the stencil shape (optional, for better edge quality)
-                RoundedRectangle(
-                    pos=self.pos,
-                    size=self.size,
-                    radius=[5]
-                )
-                StencilPop()
+        if self.style.background.hasColor(self.is_checked):
+            self.background_color.rgba = self.style.background.getColor(self.is_checked)
+
+        if self.style.border_color is not None and self.style.border_color.hasColor(self.is_checked):
+            self.border_color.rgba = self.style.border_color.getColor(self.is_checked)
+        
+        if self.style.icon.hasIcon(self.is_checked):
+            if self.icon is not None:
+                self.icon.texture_update(self.style.icon.getIcon(self.is_checked))
+                self.icon.pos = (self.x + self.width / 2 - self.icon.width / 2, self.y + self.height / 2 - self.icon.height / 2)
             else:
-                # Solid color background
-                self.bg_color = Color(*self.state_color)
-                self.bg_rect = RoundedRectangle(
-                    pos=self.pos,
-                    size=self.size,
-                    radius=[5]
-                )
-            
-            # Accent border for Enter/active keys
-            self.border_color = Color(0, 0, 0, 0)
-            self.border_line = Line(
-                rounded_rectangle=(self.x, self.y, self.width, self.height, 5),
-                width=1.5
-            )
-        
-        # Add text label
-        self.label = Label(
-            text=self.text,
-            font_size='18sp',
-            color=self.text_color,
-            bold=False,
-            halign='center',
-            valign='middle'
-        )
-        self.add_widget(self.label)
-    
-    def update_canvas(self, *args):
-        # Don't update color for gradient buttons
-        if not self.is_accent_bg:
-            self.bg_color.rgba = self.state_color
-        
-        self.bg_rect.pos = self.pos
-        self.bg_rect.size = self.size
-        
-        # Update stencil rect for gradient buttons
-        if self.is_accent_bg and hasattr(self, 'stencil_rect'):
-            self.stencil_rect.pos = self.pos
-            self.stencil_rect.size = self.size
-        
-        # Update border for accent keys (disable for Enter with accent background)
-        if self.is_accent and not self.is_accent_bg:
-            self.border_color.rgba = COLORS['accent_purple']
+                self.icon = Image(self.style.icon.getIcon(self.is_checked))
+                self.icon.pos = (self.x + self.width / 2 - self.icon.width / 2, self.y + self.height / 2 - self.icon.height / 2)
+                self.add_widget(self.icon)
         else:
-            self.border_color.rgba = (0, 0, 0, 0)
+            if self.icon is not None:
+                self.remove_widget(self.icon)
+                self.icon = None
         
-        self.border_line.rounded_rectangle = (
-            self.x, self.y, self.width, self.height, 5
-        )
-        
-        self.label.pos = self.pos
-        self.label.size = self.size
-        self.label.text_size = self.size
-    
-    def on_press(self):
-        """Handle press with visual feedback and animation"""
+        if self.style.text is not None:
+            if self.text is not None:
+                self.text.text = self.style.text
+                self.text.color = self.style.font_color.getColor(self.is_checked)
+                self.text.pos = (self.x + self.width / 2 - self.text.width / 2, self.y + self.height / 2 - self.text.height / 2)
+            else:
+                self.text = Label(text=self.style.text, font_size=self.style.font_size, color=self.style.font_color.getColor(self.is_checked))
+                self.add_widget(self.text)
+                self.text.pos = (self.x + self.width / 2 - self.text.width / 2, self.y + self.height / 2 - self.text.height / 2)
+        else:
+            if self.text is not None:
+                self.remove_widget(self.text)
+                self.text = None
 
-        if self.is_disabled:
-            return
-        
-        # Update colors based on key type
-        if self.is_accent_bg:
-            # Enter button with gradient: just reduce opacity slightly
-            # Don't change state_color to preserve gradient
-            pass
-        elif self.is_light_key:
-            self.state_color = COLORS['key_pressed_light']
-            self.text_color = COLORS['text_normal']  # Остается светло-серым
-        else:
-            self.state_color = COLORS['key_pressed']
-            self.text_color = COLORS['text_normal']  # Остается светло-серым
-        
-        # # Scale animation
-        # anim = Animation(
-        #     opacity=0.96,
-        #     duration=0.07
-        # )
-        # anim.start(self)
-        
-        # # Simulate scale with size change
-        # self.original_size = (self.width, self.height)
-        # scale_anim = Animation(
-        #     width=self.width * 0.97,
-        #     height=self.height * 0.97,
-        #     duration=0.07
-        # )
-        # scale_anim.start(self)
+    def init_canvas(self):
+        with self.canvas:
+            self.background_color = Color(*self.style.background.getColor(self.is_checked))
+            self.main_rect = RoundedRectangle(
+                pos=self.pos,
+                size=self.size,
+                radius=[self.style.border_radius])
+            
+            self.border_line = None
+            if self.style.border_color is not None and self.style.border_color.hasColor(self.is_checked):
+                self.border_color = Color(*self.style.border_color.getColor(self.is_checked))
+                self.border_line = Line(
+                    rounded_rectangle=(self.x, self.y, self.width, self.height, self.style.border_radius),
+                    width=self.style.border_width
+                )
+
+    def set_text(self, text: str):
+        self.style.text = text
+        self.change_view()
+    
+    def set_icon(self, icon: Image):
+        self.style.icon = icon
+        self.change_view()
+
+    def on_press(self):
+        self.is_checked = True
+        self.change_view()
     
     def on_release(self):
-        """Restore normal state after release"""
-        if self.is_disabled:
-            return
-        
-        # Restore colors based on key type
-        if self.is_accent_bg:
-            # Enter button with gradient: gradient is preserved automatically
-            # No need to restore state_color
-            pass
-        elif self.is_light_key:
-            self.state_color = COLORS['key_light']
-            self.text_color = COLORS['text_normal']  # Светло-серый
-        else:
-            self.state_color = COLORS['key_normal']
-            self.text_color = COLORS['text_normal']  # Светло-серый
-        
-        # # Restore opacity and size
-        # anim = Animation(
-        #     opacity=1.0,
-        #     duration=0.09
-        # )
-        # anim.start(self)
-        
-        # if hasattr(self, 'original_size'):
-        #     scale_anim = Animation(
-        #         width=self.original_size[0],
-        #         height=self.original_size[1],
-        #         duration=0.09
-        #     )
-        #     scale_anim.start(self)
-        
-        # AI INTEGRATION HOOK: Post-release processing
-        # Future: update context, trigger autocomplete
+        self.is_checked = False
+        self.change_view()
 
-#Нах нада? Удалить
-# ==================== CHIP BUTTON ====================
-class ChipButton(Label):
-    """
-    Clickable chip button for suggestions
-    Combines ButtonBehavior with Label for interactive text chips
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.halign = 'center'
-        self.valign = 'middle'
-        self.bind(size=self.update_text_size)
-    
-    def update_text_size(self, *args):
-        """Update text_size to match widget size for proper text alignment"""
-        self.text_size = self.size
+def make_key_button_style(text: str):
+    return StyleMap(
+        icon=None,
+        background=ButtonColor(color_normal=COLORS['key_normal'], color_checked=COLORS['key_pressed']),
+        border_color=None,
+        border_radius=4,
+        border_width=0,
+        text=text,
+        font_size=12,
+        font_color=ButtonColor(color_normal=COLORS['text_normal'], color_checked=COLORS['text_pressed'])
+    )
 
+def make_dark_key_button_style(text: str):
+    return StyleMap(
+        icon=None,
+        background=ButtonColor(color_normal=COLORS['key_normal_dark'], color_checked=COLORS['key_pressed_dark']),
+        border_color=None,
+        border_radius=4,
+        border_width=0,
+        text=text,
+        font_size=12,
+        font_color=ButtonColor(color_normal=COLORS['text_normal_dark'], color_checked=COLORS['text_normal_dark'])
+    )
 
-# ==================== SUGGEST BAR ====================
-class SuggestBar(BoxLayout):
-    """
-    Suggestion bar (40px height - slightly taller than letters)
-    Contains: AI button (purple, left) + 3 suggestion chips (no background, equal width)
-    """
+def make_accent_button_style(text: str):
+    return StyleMap(
+        icon=None,
+        background=ButtonColor(color_normal=COLORS['accent_purple'], color_checked=COLORS['accent_cyan']),
+        border_color=None,
+        border_radius=4,
+        border_width=0,
+        text=text,
+        font_size=12,
+        font_color=ButtonColor(color_normal=COLORS['text_normal'], color_checked=COLORS['text_pressed'])
+    )
+
+def make_float_button_style(icon = "", text = ""):
+    return StyleMap(
+        icon=icon,
+        background=ButtonColor(color_normal=COLORS['bg_keyboard'], color_checked=COLORS['bg_keyboard']),
+        border_color=None,
+        border_radius=0,
+        border_width=0,
+        text=text,
+        font_size=12,
+        font_color=ButtonColor(color_normal=COLORS['text_normal'], color_checked=COLORS['text_normal'])
+    )
+
+def make_circle_button_style(icon: str, text: str):
+    return StyleMap(
+        icon=icon,
+        background=ButtonColor(color_normal=COLORS['key_normal_dark'], color_checked=COLORS['key_normal_dark']),
+        border_color=None,
+        border_radius=20,
+        border_width=0,
+        text=text,
+        font_size=12,
+        font_color=ButtonColor(color_normal=COLORS['text_normal_dark'], color_checked=COLORS['text_normal_dark'])
+    )
+
+class HeaderBar(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.orientation = 'horizontal'
-        self.size_hint_y = None
         self.height = 40
+        self.width = 390
         self.spacing = 8
         self.padding = [12, 4, 12, 0]  # Нижний padding = 0 для примыкания к клавиатуре
-        
-        with self.canvas:
-            Color(*COLORS['bg_keyboard'])  # Тот же цвет что у клавиатуры для бесшовности
-            self.bg_rect = RoundedRectangle(
-                pos=self.pos,
-                size=self.size,
-                radius=[0]
-            )
-        
-        self.bind(pos=self.update_bg, size=self.update_bg)
-        
-        # AI button (left side, purple like Enter)
-        # AI INTEGRATION HOOK: Trigger ChatGPT suggestions
-        ai_button = self.create_ai_button()
-        self.add_widget(ai_button)
-        
-        # Demo suggestion chips (no background, equal width)
-        # AI INTEGRATION HOOK: ChatGPT autocomplete suggestions
-        # Future: populate from AI model predictions
-        suggestions = ['the', 'and', 'for']
-        for i, suggestion in enumerate(suggestions):
-            chip = self.create_chip(suggestion)
-            self.add_widget(chip)
+        self.subscriber = None
+
+        self.bind(size=self.change_view)
+        self.bind(pos=self.change_view)
+
+        self.build_layout('suggestions')
+
+        # make buttons depends on HeadeBar mode (suggestions, feature_mini, feature_full)
+
+    def change_view(self, *args):
+        self.main_layout.pos = self.pos
+        self.main_layout.size = self.size
+
+    def build_layout(self, mode: str):
+        """Build the current keyboard layout"""
+        self.clear_widgets()
+
+        if mode == 'suggestions':
+            self.main_layout = BoxLayout(orientation='horizontal', spacing=8, padding=[12, 4, 12, 0])
+
+            self.add_widget(ButtonWithIcon(make_accent_button_style(text='AI')))
+            self.add_widget(self.main_layout)
+
+            if self.subscriber is not None:
+                self.subscriber('suggestions')
+
+        elif mode == 'feature_mini':
             
-            # Add vertical separator between chips (but not after the last one)
-            if i < len(suggestions) - 1:
-                separator = self.create_separator()
-                self.add_widget(separator)
-    
-    def create_ai_button(self):
-        """Create AI button with gradient purple-to-cyan background like Enter"""
-        ai_btn = KeyButton(
-            is_accent=True,
-            key_type="enter",
-            text = 'AI'
-        )
-        
-        return ai_btn
-    
-    def create_chip(self, text):
-        """Create a suggestion chip without background, equal width"""
-        chip = ChipButton(
-            text=text,
-            size_hint_x=1,  # Равная ширина для всех
-            color=COLORS['text_normal'],
-            font_size='16sp'
-        )
-        
-        # Нет фона - только текст
-        
-        return chip
-    
-    def create_separator(self):
-        """Create vertical separator between suggestion chips"""
-        separator = Label(
-            text='|',
-            size_hint_x=None,
-            width=10,
-            color=(COLORS['text_normal'][0], COLORS['text_normal'][1], COLORS['text_normal'][2], 0.3),  # Полупрозрачный
-            font_size='16sp'
-        )
-        return separator
-    
-    def update_bg(self, *args):
-        self.bg_rect.pos = self.pos
-        self.bg_rect.size = self.size
+            self.add_widget(ButtonWithIcon(make_circle_button_style(text='<--')))
+            
+            self.add_widget(make_splitter())
 
+            self.add_widget(ButtonWithIcon(make_float_button_style(text='Tr')))
+            self.add_widget(ButtonWithIcon(make_float_button_style(text='Aa')))
+            self.add_widget(ButtonWithIcon(make_float_button_style(text='O')))
+            self.add_widget(ButtonWithIcon(make_float_button_style(text='T')))
 
-# ==================== EMOJI PANEL ====================
-class EmojiPanel(BoxLayout):
-    """
-    Emoji panel placeholder (single row of demo emojis)
-    Hidden by default, shown when emoji mode activated
-    """
+            self.add_widget(make_splitter())
+
+            self.add_widget(ButtonWithIcon(make_circle_button_style(text='***')))
+
+            if self.subscriber is not None:
+                self.subscriber('feature_mini')
+
+        elif mode == 'feature_full':
+            self.add_widget(Label(
+                text="All features",
+                font_size=12,
+                color=COLORS['text_normal']
+            ))
+            self.add_widget(ButtonWithIcon(make_float_button_style(text='X')))
+
+            if self.subscriber is not None:
+                self.subscriber('feature_full')
+
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
+
+        def make_splitter(self):
+            return Label(
+                text="|",
+                font_size=12,
+                color=COLORS['text_normal']
+            )
+        
+    def set_suggestions(self, suggestions: list[str]):
+        self.main_layout.clear_widgets()
+        for suggestion in suggestions:
+            self.main_layout.add_widget(ButtonWithIcon(make_float_button_style(text=suggestion)))
+
+    def subscribe_on_mode_change(self, callback: callable):
+        self.subscriber = callback
+
+class KeyboardPanel(BoxLayout):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = 'horizontal'
-        self.size_hint_y = None
-        self.height = 60
-        self.spacing = 12
-        self.padding = [16, 8, 16, 8]
-        
-        with self.canvas.before:
-            Color(*COLORS['bg_panel'])
-            self.bg_rect = RoundedRectangle(
-                pos=self.pos,
-                size=self.size,
-                radius=[0]
-            )
-        
-        self.bind(pos=self.update_bg, size=self.update_bg)
-        
-        # Demo emojis
-        emojis = ['😀', '😂', '❤️', '👍', '🎉', '🔥', '✨', '🌟']
-        for emoji in emojis:
-            emoji_btn = Label(
-                text=emoji,
-                size_hint=(None, 1),
-                width=40,
-                font_size='24sp'
-            )
-            self.add_widget(emoji_btn)
-    
-    def update_bg(self, *args):
-        self.bg_rect.pos = self.pos
-        self.bg_rect.size = self.size
-
-
-# ==================== KEYBOARD ROWS ====================
-class KeyboardRows(BoxLayout):
-    """
-    Main keyboard layout with 3 letter rows + bottom utility row
-    Supports ABC (QWERTY), 123 (numbers/symbols), and Emoji modes
-    """
-    current_mode = StringProperty('ABC')  # ABC, abc, 123, SYM, Emoji
-    
-    def __init__(self, on_ai_button=None, **kwargs):
         super().__init__(**kwargs)
         self.orientation = 'vertical'
         self.spacing = 6
         self.padding = [3, 0, 3, 6]
-        self.is_shifted = False  # Track shift state (False = lowercase, True = uppercase)
-        self.on_ai_button = on_ai_button  # Callback for AI button
-        
-        # Layout definitions
-        self.layouts = {
-            'ABC': [
+
+        self.central_rows_info = {'ABC': [
                 ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
                 ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-                ['shift', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'del']
+                ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
             ],
             'abc': [
                 ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
                 ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-                ['shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', 'del']
+                ['z', 'x', 'c', 'v', 'b', 'n', 'm']
             ],
             '123': [
                 ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
                 ['-', '/', ':', ';', '(', ')', '$', '&', '@', '"'],
-                ['#+=', '.', ',', '?', '!', "'", 'del']
+                ['.', ',', '?', '!', "'"]
             ],
             'SYM': [
                 ['[', ']', '{', '}', '#', '%', '^', '*', '+', '='],
                 ['_', '\\', '|', '~', '<', '>', '€', '£', '¥', '•'],
-                ['123', '.', ',', '?', '!', "'", 'del']
-            ]
-        }
-        
-        self.build_layout()
-    
-    def build_layout(self):
-        """Build the current keyboard layout"""
-        self.clear_widgets()
-        
-        mode = self.current_mode
-        
-        # Determine which layout to use based on mode and shift state
-        if mode == 'ABC':
-            layout_key = 'ABC' if self.is_shifted else 'abc'
-        else:
-            layout_key = mode
-        
-        if layout_key in self.layouts:
-            rows = self.layouts[layout_key]
-            for row_index, row_chars in enumerate(rows):
-                row = self.create_row(row_chars, row_index)
-                self.add_widget(row)
-        
-        # Add bottom utility row
-        bottom_row = self.create_bottom_row()
-        self.add_widget(bottom_row)
-    
-    def create_row(self, chars, row_index=0):
-        """Create a single keyboard row"""
-        row = BoxLayout(
-            orientation='horizontal',
-            spacing=6,
-            size_hint_y=None,
-            height=44
-        )
-        
-        # Add left padding for second row (index 1) - half key width
-        if row_index == 1:
-            left_spacer = Widget(size_hint_x=0.5)
-            row.add_widget(left_spacer)
-        
-        for char in chars:
-            if char == 'shift':
-                # Shift key (wider)
-                key = KeyButton(
-                    text='shift',
-                    size_hint_x=1.3,
-                    key_type='special',
-                    is_accent=self.is_shifted  # Highlight when active
-                )
-                key.bind(on_release=self.toggle_shift)
-            elif char == 'del':
-                # Delete key (wider)
-                key = KeyButton(
-                    text='Del',
-                    size_hint_x=1.3,
-                    key_type='special'
-                )
-            elif char == '#+=':
-                # Symbol switch key (123 -> SYM)
-                key = KeyButton(
-                    text='#+=',
-                    size_hint_x=1.3,
-                    key_type='special'
-                )
-                key.bind(on_release=self.switch_to_symbols)
-            elif char == '123':
-                # Number switch key (SYM -> 123)
-                key = KeyButton(
-                    text='123',
-                    size_hint_x=1.3,
-                    key_type='special'
-                )
-                key.bind(on_release=self.switch_to_numbers)
-            else:
-                # Regular character key
-                key = KeyButton(
-                    text=char,
-                    size_hint_x=1,
-                    key_type='char'
-                )
-            
-            row.add_widget(key)
-        
-        # Add right padding for second row (index 1) - half key width
-        if row_index == 1:
-            right_spacer = Widget(size_hint_x=0.5)
-            row.add_widget(right_spacer)
-        
-        return row
-    
-    def create_bottom_row(self):
-        """
-        Create bottom utility row with 123, Lang, Space, Enter
-        Sizes: 123=58x54, Lang=54x54, Space=min180x54(flex), Enter=76x54
-        """
-        row = BoxLayout(
-            orientation='horizontal',
-            spacing=6,
-            size_hint_y=None,
-            height=44
-        )
-        
-        # 123 / ABC switch button (58px width)
-        if self.current_mode == 'ABC':
-            switch_text = '123'
-        else:  # 123 or SYM mode
-            switch_text = 'ABC'
-        
-        switch_btn = KeyButton(
-            text=switch_text,
-            size_hint_x=None,
-            width=58,
-            key_type='special'
-        )
-        switch_btn.bind(on_release=self.toggle_layout)
-        row.add_widget(switch_btn)
-        
-        # Language/Emoji button (54px width)
-        lang_btn = KeyButton(
-            text='🌐',
-            size_hint_x=None,
-            width=54,
-            key_type='special'
-        )
-        lang_btn.bind(on_release=self.toggle_emoji)
-        row.add_widget(lang_btn)
-        
-        # AI Features button (54px width)
-        ai_btn = KeyButton(
-            text='AI',
-            size_hint_x=None,
-            width=54,
-            key_type='special',
-            is_accent=True  # Highlight AI button
-        )
-        if self.on_ai_button:
-            ai_btn.bind(on_release=self.on_ai_button)
-        row.add_widget(ai_btn)
-        
-        # Space bar (flexible, min 180px)
-        # AI INTEGRATION HOOK: Space bar long-press for voice/AI input
-        space_btn = KeyButton(
-            text='space',
-            size_hint_x=3,
-            key_type='space'
-        )
-        row.add_widget(space_btn)
-        
-        # Enter button (76px width, accent style)
-        enter_btn = KeyButton(
-            text='⏎',
-            size_hint_x=None,
-            width=76,
-            key_type='enter',
-            is_accent=True
-        )
-        # AI INTEGRATION HOOK: Enter key sends message to AI
-        row.add_widget(enter_btn)
-        
-        return row
-    
-    def toggle_layout(self, instance):
-        """Switch between ABC and 123/SYM layouts"""
-        # AI INTEGRATION HOOK: Layout switch event
-        if self.current_mode == 'ABC':
-            self.current_mode = '123'
-            self.is_shifted = False  # Reset shift when leaving ABC mode
-        elif self.current_mode in ('123', 'SYM'):
-            self.current_mode = 'ABC'
-            self.is_shifted = False  # Start with lowercase
-        self.build_layout()
-    
-    def switch_to_symbols(self, instance):
-        """Switch from 123 to SYM layout"""
-        # AI INTEGRATION HOOK: Symbol layout activation
-        self.current_mode = 'SYM'
-        self.build_layout()
-    
-    def switch_to_numbers(self, instance):
-        """Switch from SYM to 123 layout"""
-        # AI INTEGRATION HOOK: Number layout activation
-        self.current_mode = '123'
-        self.build_layout()
-    
-    def toggle_shift(self, instance):
-        """Toggle shift state for uppercase/lowercase letters"""
-        # AI INTEGRATION HOOK: Shift state change
-        if self.current_mode == 'ABC':
-            self.is_shifted = not self.is_shifted
-            self.build_layout()
-    
-    def toggle_emoji(self, instance):
-        """Toggle emoji panel (placeholder)"""
-        # AI INTEGRATION HOOK: Emoji/language selector
-        # Future: integrate emoji picker with AI sentiment
-        pass
+                ['.', ',', '?', '!', "'"]
+            ]}
 
+        self.central_rows = []
+        self.central_rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
+        self.central_rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
+        self.central_rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
 
-# ==================== KEYBOARD CONTAINER ====================
-class KeyboardContainer(FloatLayout):
-    """
-    Root keyboard container with dark background (#1C1C1E)
-    Includes safe-area bottom padding (34px)
-    Total size: 390x(280+34)=314px
-    Can switch between keyboard and features panel
-    """
+        self.rows = []
+        self.rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
+        self.rows[0].add_widget(self.central_rows[0])
+        
+        self.rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
+        self.rows[1].add_widget(self.central_rows[1])
+
+        self.shift_button = ButtonWithIcon(make_dark_key_button_style(text='Shift'))
+        self.shift_button.bind(on_release=self.proc_shift)
+
+        self.rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
+        self.rows[2].add_widget(self.shift_button)
+        self.rows[2].add_widget(self.central_rows[2])
+        self.rows[2].add_widget(ButtonWithIcon(make_dark_key_button_style(text='Del')))
+
+        self.mode_switch_button = ButtonWithIcon(make_key_button_style(text='123'))
+        self.mode_switch_button.bind(on_release=self.proc_switch)
+
+        self.rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
+        self.rows[3].add_widget(self.mode_switch_button)
+        self.rows[3].add_widget(ButtonWithIcon(make_key_button_style(text='Lang')))
+        self.rows[3].add_widget(ButtonWithIcon(make_key_button_style(text='Space')))
+        self.rows[3].add_widget(ButtonWithIcon(make_accent_button_style(text='Enter')))
+
+        for row in self.rows:
+            self.add_widget(row)
+
+    def proc_shift(self, *args):
+        if (self.shift_button.style.text == 'Shift'):
+            self.fill_central_row('abc')
+            self.shift_button.style.text = 'SHIFT'
+        elif (self.shift_button.style.text == 'SHIFT'):
+            self.fill_central_row('ABC')
+            self.shift_button.style.text = 'Shift'
+        elif (self.shift_button.style.text == '1/2'):
+            self.fill_central_row('SYM')
+            self.shift_button.style.text = '2/2'
+        elif (self.shift_button.style.text == '2/2'):
+            self.fill_central_row('123')
+            self.shift_button.style.text = '1/2'
+
+    def proc_switch(self, *args):
+        if (self.mode_switch_button.style.text == '123'):
+            self.fill_central_row('123')
+            self.shift_button.style.text = '1/2'
+            self.mode_switch_button.style.text = 'ABC'
+        elif (self.mode_switch_button.style.text == 'ABC'):
+            self.fill_central_row('ABC')
+            self.shift_button.style.text = 'Shift'
+            self.mode_switch_button.style.text = '123'
+
+    def fill_central_row(self,mode: str):
+        for row_index, row in enumerate(self.central_rows):
+            row.clear_widgets()
+            for button in self.central_rows_info[mode][row_index]:
+                row.add_widget(ButtonWithIcon(make_key_button_style(text=button)))
+        # make buttons depends on KeyboardPanel mode (ABC, abc, 123, #+=)
+
+class FeaturesPanel(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.size_hint = (1, 1)
+        self.orientation = 'vertical'
+        self.spacing = 6
+        self.padding = [3, 0, 3, 6]
         
-        with self.canvas.before:
-            Color(*COLORS['bg_keyboard'])
-            self.bg_rect = RoundedRectangle(
-                pos=self.pos,
-                size=self.size,
-                radius=[0]
-            )
-        
-        self.bind(pos=self.update_bg, size=self.update_bg)
-        
-        # Main layout container
-        self.main_layout = BoxLayout(
-            orientation='vertical',
-            size_hint=(1, None),
-            height=284,  # Keyboard (244) + suggest bar (40) + safe area (34)
-            pos_hint={'center_x': 0.5, 'top': 0.8},
-            spacing=0  # No spacing between suggest bar and keyboard
-        )
-        
-        # Suggest bar
-        # AI INTEGRATION HOOK: Real-time ChatGPT suggestions
-        self.suggest_bar = SuggestBar()
-        self.main_layout.add_widget(self.suggest_bar)
-        
-        # Keyboard rows (with AI button callback)
-        self.keyboard_rows = KeyboardRows(on_ai_button=self.show_features_panel)
-        self.main_layout.add_widget(self.keyboard_rows)
-        
-        # Emoji panel (hidden by default)
-        # emoji_panel = EmojiPanel()
-        # main_layout.add_widget(emoji_panel)
-        
-        # Safe area bottom padding (34px)
-        safe_area = Widget(size_hint_y=None, height=34)
-        with safe_area.canvas.before:
-            Color(*COLORS['bg_keyboard'])
-            safe_bg = RoundedRectangle(pos=safe_area.pos, size=safe_area.size)
-            safe_area.bind(pos=lambda i, v: setattr(safe_bg, 'pos', v))
-            safe_area.bind(size=lambda i, v: setattr(safe_bg, 'size', v))
-        self.main_layout.add_widget(safe_area)
-        
-        self.add_widget(self.main_layout)
-        
-        # Store references for switching
-        self.features_panel = None
-        self.is_showing_features = False
-    
-    def show_features_panel(self, *args):
-        """Switch from keyboard to features panel"""
-        if not self.is_showing_features:
-            # Hide keyboard layout
-            self.remove_widget(self.main_layout)
-            
-            # Create and show features panel
-            self.features_panel = FeaturesPanel(on_close=self.show_keyboard)
-            self.add_widget(self.features_panel)
-            
-            self.is_showing_features = True
-    
-    def show_keyboard(self, *args):
-        """Switch from features panel back to keyboard"""
-        if self.is_showing_features:
-            # Remove features panel
-            if self.features_panel:
-                self.remove_widget(self.features_panel)
-                self.features_panel = None
-            
-            # Show keyboard layout
-            self.add_widget(self.main_layout)
-            
-            self.is_showing_features = False
-    
-    def update_bg(self, *args):
-        self.bg_rect.pos = self.pos
-        self.bg_rect.size = self.size
+        # make buttons depends on FeaturesPanel mode
 
+# class EmojiPanel(BoxLayout): # maybe widget?
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self.orientation = 'horizontal'
+#         self.height = 60
+#         self.spacing = 12
+#         self.padding = [16, 8, 16, 8]
+        
+        # make buttons depends on EmojiPanel mode
+
+class KeyboardMain(BoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.spacing = 6
+        self.padding = [3, 0, 3, 6]
+        
+        self.header_bar = HeaderBar()
+        self.active_panel = KeyboardPanel()
+        self.header_bar.set_suggestions(['the', 'and', 'for'])
+
+        self.header_bar.subscribe_on_mode_change(self.proc_mode_change)
+
+        self.proc_mode_change('suggestions')
+        # self.active_panel.subscribe_on_buttons(self.proc_button)
+
+    def proc_mode_change(self, mode: str):
+        self.remove_widget(self.active_panel)
+
+        if mode == 'suggestions':
+            self.active_panel = KeyboardPanel()
+        elif mode == 'feature_mini':
+            self.active_panel = KeyboardPanel()
+        elif mode == 'feature_full':
+            self.active_panel = FeaturesPanel()
+
+        self.add_widget(self.active_panel)
+
+    # def proc_button(self, type: str, text: str):
+        # if type == 'symbol':
+        #     print(f"Symbol: {text}")
+        # elif type == 'mode_switch':
+        #     print(f"Mode switch: {text}")
+        #     # switch between panels (KeyboardPanel, FeaturesPanel, EmojiPanel)
+        # elif type == 'feature':
+        #     print(f"Feature: {text}")
+            # process feature button
+
+# split all to different files
 
 # ==================== MAIN APP ====================
 class KeyboardApp(App):
@@ -743,7 +521,7 @@ class KeyboardApp(App):
         # AI INTEGRATION HOOK: App initialization
         # Future: initialize ChatGPT API connection, load user preferences
         
-        return KeyboardContainer()
+        return KeyboardMain()
 
 
 # ==================== ENTRY POINT ====================
