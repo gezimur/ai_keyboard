@@ -10,17 +10,11 @@ from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
-from kivy.graphics import Color, RoundedRectangle, Line, Rectangle
+from kivy.graphics import Color, RoundedRectangle, Line
 from kivy.graphics.texture import Texture
-from kivy.graphics.stencil_instructions import StencilPush, StencilUse, StencilUnUse, StencilPop
-from kivy.animation import Animation
-from kivy.properties import StringProperty, NumericProperty, ListProperty, BooleanProperty
 from kivy.core.window import Window
 from kivy.uix.behaviors import ButtonBehavior
-
-# Import FeaturesPanel from features_panel.py
-from features_panel import FeaturesPanel
-
+from kivy.metrics import dp
 
 # ==================== COLOR DEFINITIONS ====================
 COLORS = {
@@ -76,7 +70,7 @@ def create_gradient_texture(color1, color2, width=256, height=1):
     texture.blit_buffer(bytes(pixels), colorfmt='rgba', bufferfmt='ubyte')
     return texture
 
-class ButtoIcon:
+class ButtonIcon:
     def __init__(self, icon_normal = None, icon_checked = None):
         self.icon_normal = icon_normal
         self.icon_checked = icon_checked
@@ -115,8 +109,9 @@ class ButtonColor:
             return self.color_normal
 
 class StyleMap:
-    def __init__(self, icon: ButtoIcon = None, background: ButtonColor = ButtonColor(), border_color: ButtonColor = ButtonColor(), border_radius: int = 0, border_width: int = 0, text: str = None, font_size: int = 0, font_color: ButtonColor = ButtonColor()):
-        self.icon               = ButtoIcon()
+    def __init__(self, icon: str = "", icon_scale: float = 0.6, background: ButtonColor = ButtonColor(), border_color: ButtonColor = ButtonColor(), border_radius: int = 0, border_width: int = 0, text: str = None, font_size: int = 0, font_color: ButtonColor = ButtonColor()):
+        self.icon               = ButtonIcon(icon_normal=icon, icon_checked=icon) if icon != "" else None
+        self.icon_scale         = icon_scale
         self.background         = background
         self.border_color       = border_color
         self.border_radius      = border_radius
@@ -157,19 +152,6 @@ class ButtonWithIcon(ButtonBehavior, Widget):
         if self.style.border_color is not None and self.style.border_color.hasColor(self.is_checked):
             self.border_color.rgba = self.style.border_color.getColor(self.is_checked)
         
-        if self.style.icon.hasIcon(self.is_checked):
-            if self.icon is not None:
-                self.icon.texture_update(self.style.icon.getIcon(self.is_checked))
-                self.icon.pos = (self.x + self.width / 2 - self.icon.width / 2, self.y + self.height / 2 - self.icon.height / 2)
-            else:
-                self.icon = Image(self.style.icon.getIcon(self.is_checked))
-                self.icon.pos = (self.x + self.width / 2 - self.icon.width / 2, self.y + self.height / 2 - self.icon.height / 2)
-                self.add_widget(self.icon)
-        else:
-            if self.icon is not None:
-                self.remove_widget(self.icon)
-                self.icon = None
-        
         if self.style.text is not None:
             if self.text is not None:
                 self.text.text = self.style.text
@@ -183,6 +165,26 @@ class ButtonWithIcon(ButtonBehavior, Widget):
             if self.text is not None:
                 self.remove_widget(self.text)
                 self.text = None
+
+        if self.style.icon is not None and self.style.icon.hasIcon(self.is_checked):
+            icon_path = self.style.icon.getIcon(self.is_checked)
+            if self.icon is None:
+                # Создаем новый виджет Image для иконки
+                self.icon = Image(source=icon_path, allow_stretch=True, keep_ratio=True)
+                self.add_widget(self.icon)
+            else:
+                # Обновляем существующую иконку
+                self.icon.source = icon_path
+            
+            self.icon.size = (self.width * self.style.icon_scale, self.height * self.style.icon_scale)
+            self.icon.pos = (
+                self.x + (self.width - self.icon.width) / 2,
+                self.y + (self.height - self.icon.height) / 2
+            )
+        else:
+            if self.icon is not None:
+                self.remove_widget(self.icon)
+                self.icon = None
 
     def init_canvas(self):
         with self.canvas:
@@ -199,12 +201,13 @@ class ButtonWithIcon(ButtonBehavior, Widget):
                     rounded_rectangle=(self.x, self.y, self.width, self.height, self.style.border_radius),
                     width=self.style.border_width
                 )
+                
 
     def set_text(self, text: str):
         self.style.text = text
         self.change_view()
     
-    def set_icon(self, icon: Image):
+    def set_icon(self, icon: str):
         self.style.icon = icon
         self.change_view()
 
@@ -221,40 +224,43 @@ def make_key_button_style(text: str):
         icon=None,
         background=ButtonColor(color_normal=COLORS['key_normal'], color_checked=COLORS['key_pressed']),
         border_color=None,
-        border_radius=4,
+        border_radius=6,  # Увеличен радиус для более мягких углов
         border_width=0,
         text=text,
-        font_size=12,
+        font_size=18,  # Увеличен размер шрифта для лучшей читаемости
         font_color=ButtonColor(color_normal=COLORS['text_normal'], color_checked=COLORS['text_pressed'])
     )
 
-def make_dark_key_button_style(text: str):
+def make_dark_key_button_style(icon = "", text = ""):
     return StyleMap(
-        icon=None,
+        icon=icon,
+        icon_scale=0.6,
         background=ButtonColor(color_normal=COLORS['key_normal_dark'], color_checked=COLORS['key_pressed_dark']),
         border_color=None,
-        border_radius=4,
+        border_radius=6,  # Увеличен радиус для более мягких углов
         border_width=0,
         text=text,
-        font_size=12,
+        font_size=16,  # Увеличен размер шрифта
         font_color=ButtonColor(color_normal=COLORS['text_normal_dark'], color_checked=COLORS['text_normal_dark'])
     )
 
-def make_accent_button_style(text: str):
+def make_accent_button_style(icon = "", text = ""):
     return StyleMap(
-        icon=None,
+        icon=icon,
+        icon_scale=1.0,
         background=ButtonColor(color_normal=COLORS['accent_purple'], color_checked=COLORS['accent_cyan']),
         border_color=None,
-        border_radius=4,
+        border_radius=6,  # Увеличен радиус для более мягких углов
         border_width=0,
         text=text,
-        font_size=12,
+        font_size=16,  # Увеличен размер шрифта
         font_color=ButtonColor(color_normal=COLORS['text_normal'], color_checked=COLORS['text_pressed'])
     )
 
 def make_float_button_style(icon = "", text = ""):
     return StyleMap(
         icon=icon,
+        icon_scale=1.0,
         background=ButtonColor(color_normal=COLORS['bg_keyboard'], color_checked=COLORS['bg_keyboard']),
         border_color=None,
         border_radius=0,
@@ -264,15 +270,15 @@ def make_float_button_style(icon = "", text = ""):
         font_color=ButtonColor(color_normal=COLORS['text_normal'], color_checked=COLORS['text_normal'])
     )
 
-def make_circle_button_style(icon: str, text: str):
+def make_circle_button_style(icon = "", text = ""):
     return StyleMap(
         icon=icon,
-        background=ButtonColor(color_normal=COLORS['key_normal_dark'], color_checked=COLORS['key_normal_dark']),
+        background=ButtonColor(color_normal=(18/255, 18/255, 20/255, 1), color_checked=(25/255, 25/255, 27/255, 1)),  # Темнее фона приложения
         border_color=None,
-        border_radius=20,
+        border_radius=18,  # Увеличен радиус для более круглой формы
         border_width=0,
         text=text,
-        font_size=12,
+        font_size=14,
         font_color=ButtonColor(color_normal=COLORS['text_normal_dark'], color_checked=COLORS['text_normal_dark'])
     )
 
@@ -280,10 +286,11 @@ class HeaderBar(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.orientation = 'horizontal'
-        self.height = 40
+        self.height = 36  # Уменьшена высота для более компактного вида
+        self.size_hint_y = None  # Добавлено: используем фиксированную высоту
         self.width = 390
-        self.spacing = 8
-        self.padding = [12, 4, 12, 0]  # Нижний padding = 0 для примыкания к клавиатуре
+        self.spacing = 6  # Уменьшен spacing для более плотного размещения
+        self.padding = [6, 0, 6, 0]  # Убраны вертикальные отступы для плотного прилегания
         self.subscriber = None
 
         self.bind(size=self.change_view)
@@ -297,33 +304,59 @@ class HeaderBar(BoxLayout):
         self.main_layout.pos = self.pos
         self.main_layout.size = self.size
 
+    def make_splitter(self):
+        """Helper method to create a separator"""
+        return Label(
+            text="|",
+            font_size=10,  # Уменьшен размер для тоньше разделителя
+            color=(242/255, 242/255, 247/255, 0.3),  # Менее яркий цвет (opacity 0.3 вместо 1.0)
+            size_hint_x=0.2  # Компактный размер разделителя
+        )
+    
     def build_layout(self, mode: str):
         """Build the current keyboard layout"""
         self.clear_widgets()
 
         if mode == 'suggestions':
-            self.main_layout = BoxLayout(orientation='horizontal', spacing=8, padding=[12, 4, 12, 0])
+            self.main_layout = BoxLayout(orientation='horizontal', spacing=6, padding=[0, 0, 0, 0])
 
-            self.add_widget(ButtonWithIcon(make_accent_button_style(text='AI')))
+            # Создаем кнопку "AI" с обработчиком
+            ai_button = ButtonWithIcon(make_accent_button_style(text='AI'))
+            ai_button.size_hint = (None, None)  # Фиксированный размер
+            ai_button.size = (dp(45), dp(32))  # Небольшой компактный размер
+            ai_button.bind(on_release=lambda instance: self.build_layout('feature_mini'))
+            self.add_widget(ai_button)
             self.add_widget(self.main_layout)
+
+            self.set_suggestions(['', '', ''])
 
             if self.subscriber is not None:
                 self.subscriber('suggestions')
 
         elif mode == 'feature_mini':
             
-            self.add_widget(ButtonWithIcon(make_circle_button_style(text='<--')))
+            # Создаем кнопку "<--" с обработчиком возврата к suggestions
+            back_button = ButtonWithIcon(make_circle_button_style(text='<--'))
+            back_button.size_hint = (None, None)  # Фиксированный размер
+            back_button.size = (36, 36)  # Круглая кнопка 36x36
+            back_button.bind(on_release=lambda instance: self.build_layout('suggestions'))
+            self.add_widget(back_button)
             
-            self.add_widget(make_splitter())
+            self.add_widget(self.make_splitter())
 
             self.add_widget(ButtonWithIcon(make_float_button_style(text='Tr')))
             self.add_widget(ButtonWithIcon(make_float_button_style(text='Aa')))
             self.add_widget(ButtonWithIcon(make_float_button_style(text='O')))
             self.add_widget(ButtonWithIcon(make_float_button_style(text='T')))
 
-            self.add_widget(make_splitter())
+            self.add_widget(self.make_splitter())
 
-            self.add_widget(ButtonWithIcon(make_circle_button_style(text='***')))
+            # Создаем кнопку "***" с обработчиком перехода к feature_full
+            more_button = ButtonWithIcon(make_circle_button_style(text='***'))
+            more_button.size_hint = (None, None)  # Фиксированный размер
+            more_button.size = (36, 36)  # Круглая кнопка 36x36
+            more_button.bind(on_release=lambda instance: self.build_layout('feature_full'))
+            self.add_widget(more_button)
 
             if self.subscriber is not None:
                 self.subscriber('feature_mini')
@@ -334,20 +367,18 @@ class HeaderBar(BoxLayout):
                 font_size=12,
                 color=COLORS['text_normal']
             ))
-            self.add_widget(ButtonWithIcon(make_float_button_style(text='X')))
+            
+            # Создаем кнопку "X" с обработчиком возврата к suggestions
+            close_button = ButtonWithIcon(make_float_button_style(text='X'))
+            close_button.size_hint_x = 0.6  # Компактный размер
+            close_button.bind(on_release=lambda instance: self.build_layout('feature_mini'))
+            self.add_widget(close_button)
 
             if self.subscriber is not None:
                 self.subscriber('feature_full')
 
         else:
             raise ValueError(f"Invalid mode: {mode}")
-
-        def make_splitter(self):
-            return Label(
-                text="|",
-                font_size=12,
-                color=COLORS['text_normal']
-            )
         
     def set_suggestions(self, suggestions: list[str]):
         self.main_layout.clear_widgets()
@@ -362,7 +393,7 @@ class KeyboardPanel(BoxLayout):
         super().__init__(**kwargs)
         self.orientation = 'vertical'
         self.spacing = 6
-        self.padding = [3, 0, 3, 6]
+        self.padding = [6, 2, 6, 6]  # Минимальный верхний отступ для плотного прилегания к HeaderBar
 
         self.central_rows_info = {'ABC': [
                 ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -387,7 +418,7 @@ class KeyboardPanel(BoxLayout):
 
         self.central_rows = []
         self.central_rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
-        self.central_rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
+        self.central_rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44, padding=[15, 0, 15, 0]))  # Отступы для визуального смещения
         self.central_rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
 
         self.rows = []
@@ -398,21 +429,40 @@ class KeyboardPanel(BoxLayout):
         self.rows[1].add_widget(self.central_rows[1])
 
         self.shift_button = ButtonWithIcon(make_dark_key_button_style(text='Shift'))
+        self.shift_button.size_hint_x = None  # Уменьшенный размер для Shift
+        self.shift_button.size = (57, 52)
         self.shift_button.bind(on_release=self.proc_shift)
+
+        self.delete_button = ButtonWithIcon(make_dark_key_button_style(icon='icons/del.png'))
+        self.delete_button.size_hint_x = None  # Уменьшенный размер для Del
+        self.delete_button.size = (57, 52)
 
         self.rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
         self.rows[2].add_widget(self.shift_button)
         self.rows[2].add_widget(self.central_rows[2])
-        self.rows[2].add_widget(ButtonWithIcon(make_dark_key_button_style(text='Del')))
+        self.rows[2].add_widget(self.delete_button)
 
         self.mode_switch_button = ButtonWithIcon(make_key_button_style(text='123'))
+        self.mode_switch_button.size_hint_x = 1.0  # Компактный размер
         self.mode_switch_button.bind(on_release=self.proc_switch)
+
+        self.lang_button = ButtonWithIcon(make_key_button_style(text='Lang'))
+        self.lang_button.size_hint_x = 1.0  # Компактный размер
+
+        self.space_button = ButtonWithIcon(make_key_button_style(text='Space'))
+        self.space_button.size_hint_x = 5.0  # Широкая кнопка Space
+
+        self.enter_button = ButtonWithIcon(make_float_button_style(icon='icons/enter.png'))
+        self.enter_button.size_hint_x = 1.1  # Средний размер
 
         self.rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
         self.rows[3].add_widget(self.mode_switch_button)
-        self.rows[3].add_widget(ButtonWithIcon(make_key_button_style(text='Lang')))
-        self.rows[3].add_widget(ButtonWithIcon(make_key_button_style(text='Space')))
-        self.rows[3].add_widget(ButtonWithIcon(make_accent_button_style(text='Enter')))
+        self.rows[3].add_widget(self.lang_button)
+        self.rows[3].add_widget(self.space_button)
+        self.rows[3].add_widget(self.enter_button)
+
+        # Добавлено: инициализируем клавиши при создании панели
+        self.fill_central_row('ABC')
 
         for row in self.rows:
             self.add_widget(row)
@@ -445,7 +495,9 @@ class KeyboardPanel(BoxLayout):
         for row_index, row in enumerate(self.central_rows):
             row.clear_widgets()
             for button in self.central_rows_info[mode][row_index]:
-                row.add_widget(ButtonWithIcon(make_key_button_style(text=button)))
+                button = ButtonWithIcon(make_key_button_style(text=button))
+                button.size_hint_x = 1.0
+                row.add_widget(button)
         # make buttons depends on KeyboardPanel mode (ABC, abc, 123, #+=)
 
 class FeaturesPanel(BoxLayout):
@@ -471,8 +523,8 @@ class KeyboardMain(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.orientation = 'vertical'
-        self.spacing = 6
-        self.padding = [3, 0, 3, 6]
+        self.spacing = 0  # Убран spacing для плотного прилегания HeaderBar к KeyboardPanel
+        self.padding = [0, 0, 0, 0]  # Убраны отступы для плотного прилегания
         
         self.header_bar = HeaderBar()
         self.active_panel = KeyboardPanel()
@@ -480,11 +532,16 @@ class KeyboardMain(BoxLayout):
 
         self.header_bar.subscribe_on_mode_change(self.proc_mode_change)
 
+        # Добавлено: добавляем header_bar в layout
+        self.add_widget(self.header_bar)
+
         self.proc_mode_change('suggestions')
         # self.active_panel.subscribe_on_buttons(self.proc_button)
 
     def proc_mode_change(self, mode: str):
-        self.remove_widget(self.active_panel)
+        # Добавлено: проверяем, что виджет существует в layout перед удалением
+        if self.active_panel in self.children:
+            self.remove_widget(self.active_panel)
 
         if mode == 'suggestions':
             self.active_panel = KeyboardPanel()
@@ -537,5 +594,6 @@ if __name__ == '__main__':
     - Smart emoji recommendations
     - Multi-language support with AI translation
     """
+    
     KeyboardApp().run()
 
