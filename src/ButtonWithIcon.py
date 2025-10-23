@@ -73,7 +73,9 @@ class IconPartButton(BoxLayout, ButtonViewStrategy):
         
         if self.icon is None:
             self.icon = Image(source=icon, allow_stretch=True, keep_ratio=True, size_hint=(0.6, 0.6))
-            self.add_widget(self.icon)
+            crutch_layout = BoxLayout(orientation='vertical')
+            crutch_layout.add_widget(self.icon)
+            self.add_widget(crutch_layout)
         else:
             self.icon.source = icon
 
