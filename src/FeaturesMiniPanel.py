@@ -15,9 +15,9 @@ class FeaturesMiniPanel(BoxLayout):
         self.height = dp(32)
 
         # Создаем кнопку "<--" с обработчиком возврата к suggestions
-        back_button = make_round_icon_part_button(make_dark_key_button_style(text='<--'))
-        back_button.bind(on_release=lambda instance: self.state_subscriber('keys + suggestions'))
-        self.add_widget(back_button)
+        self.back_button = make_round_icon_part_button(make_dark_key_button_style(text='<--'))
+        self.back_button.bind(on_release=lambda instance: self.state_subscriber('keys + suggestions'))
+        self.add_widget(self.back_button)
         
         self.add_widget(self.make_splitter())
 
@@ -29,10 +29,22 @@ class FeaturesMiniPanel(BoxLayout):
         self.add_widget(self.make_splitter())
 
         # Создаем кнопку "***" с обработчиком перехода к feature_full
-        more_button = make_round_icon_part_button(make_dark_key_button_style(text='***'))
-        more_button.bind(on_release=lambda instance: self.state_subscriber('features'))
-        self.add_widget(more_button)
+        self.more_button = make_round_icon_part_button(make_dark_key_button_style(text='***'))
+        self.more_button.bind(on_release=lambda instance: self.state_subscriber('features'))
+        self.add_widget(self.more_button)
     
+        self.back_button.size_hint_x = None
+        self.more_button.size_hint_x = None
+
+        self.bind(size=self.update_geometry)
+        self.update_geometry()
+
+    def update_geometry(self, *args):
+        avaliable_height = self.height - self.padding[1] - self.padding[3]
+
+        self.back_button.size = (avaliable_height, avaliable_height)
+        self.more_button.size = (avaliable_height, avaliable_height)
+
     def make_splitter(self):
         """Helper method to create a separator"""
         return Label(

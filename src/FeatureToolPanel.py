@@ -13,7 +13,7 @@ class FeatureToolPanel(BoxLayout):
         self.padding = [3, 0, 3, 6]
 
         self.top_layout = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44)
-        self.back_button = make_square_icon_part_button(make_dark_key_button_style(text='<--'))
+        self.back_button = make_round_icon_button(make_dark_key_button_style(text='<--'))
         self.back_button.bind(on_release=lambda instance: self.state_subscriber('keys + features')) #todo: back state
         self.top_layout.add_widget(self.back_button)
         self.top_layout.add_widget(self.make_splitter())
@@ -30,15 +30,37 @@ class FeatureToolPanel(BoxLayout):
 
         self.undo_button = make_round_icon_button(make_dark_key_button_style(text='Undo'))
         self.redo_button = make_round_icon_button(make_dark_key_button_style(text='Redo'))
+
+        self.space_widget = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None)
+
         self.apply_button = make_tablet_icon_button(make_accent_button_style(text='Apply'))
         self.apply_button.bind(on_release=lambda instance: self.state_subscriber('keys + features', self.text_input.text)) #todo: back state
         
         self.bottom_layout.add_widget(self.generate_button)
         self.bottom_layout.add_widget(self.undo_button)
         self.bottom_layout.add_widget(self.redo_button)
+        self.bottom_layout.add_widget(self.space_widget)
         self.bottom_layout.add_widget(self.apply_button)
 
         self.add_widget(self.bottom_layout)
+
+        self.back_button.size_hint_x = None
+        self.generate_button.size_hint_x = None
+        self.undo_button.size_hint_x = None
+        self.redo_button.size_hint_x = None
+        self.apply_button.size_hint_x = None
+
+        self.bind(size=self.update_geometry)
+        self.update_geometry()
+
+    def update_geometry(self, *args):
+        avaliable_height = self.bottom_layout.height - self.bottom_layout.padding[1] - self.bottom_layout.padding[3]
+
+        self.back_button.size = (avaliable_height, avaliable_height)
+        self.generate_button.size = (avaliable_height, avaliable_height)
+        self.undo_button.size = (avaliable_height, avaliable_height)
+        self.redo_button.size = (avaliable_height, avaliable_height)
+        self.apply_button.size = (80, avaliable_height)
 
     def make_splitter(self):
         """Helper method to create a separator"""

@@ -32,6 +32,15 @@ class FeaturesPanel(BoxLayout):
                 row_layout.add_widget(self.make_feature_button(feature))
             self.add_widget(row_layout)
 
+        self.back_button.size_hint_x = None
+
+        self.bind(size=self.update_geometry)
+        self.update_geometry()
+
+    def update_geometry(self, *args):
+        avaliable_height = self.top_layout.height - self.top_layout.padding[1] - self.top_layout.padding[3]
+        self.back_button.size = (avaliable_height, avaliable_height)
+
     def make_feature_button(self, text: str):
         feature_button = make_tablet_icon_part_button(make_dark_key_button_style(icon=f'icons/{text.lower()}.png', text=text))
         feature_button.bind(on_release=lambda instance: self.state_subscriber('keys + feature tool', text))
