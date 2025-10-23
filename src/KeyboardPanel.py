@@ -1,3 +1,5 @@
+import copy
+
 from kivy.uix.boxlayout import BoxLayout
 
 from src.ButtonWithIcon import make_square_icon_button, make_square_icon_part_button
@@ -9,6 +11,8 @@ class KeyboardPanel(BoxLayout):
         self.orientation = 'vertical'
         self.spacing = 6
         self.padding = [6, 2, 6, 6]  # Минимальный верхний отступ для плотного прилегания к HeaderBar
+        self.size_hint_y = None
+        self.height = 202  # 4 rows * 44 + 3 spaces * 6 + padding (2+6)
 
         self.central_rows_info = {'ABC': [
                 ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -49,6 +53,7 @@ class KeyboardPanel(BoxLayout):
         self.shift_button.bind(on_release=self.proc_shift)
 
         self.delete_button = make_square_icon_part_button(make_dark_key_button_style(icon='icons/del.png'))
+        self.delete_button.bind(on_release=lambda instance: self.request_subscriber('key', 'Del'))
         self.delete_button.size_hint_x = None  # Уменьшенный размер для Del
         self.delete_button.size = (57, 52)
 
@@ -65,9 +70,11 @@ class KeyboardPanel(BoxLayout):
         self.lang_button.size_hint_x = 1.0  # Компактный размер
 
         self.space_button = make_square_icon_part_button(make_key_button_style(text='Space'))
+        self.space_button.bind(on_release=lambda instance: self.request_subscriber('key', 'Space'))
         self.space_button.size_hint_x = 5.0  # Широкая кнопка Space
 
         self.enter_button = make_square_icon_button(make_dark_key_button_style(icon='icons/enter.png', text='Enter'))
+        self.enter_button.bind(on_release=lambda instance: self.request_subscriber('key', 'Enter'))
         self.enter_button.size_hint_x = 1.1  # Средний размер
 
         self.rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
@@ -106,11 +113,18 @@ class KeyboardPanel(BoxLayout):
             self.mode_switch_button.set_text('123')
             self.fill_central_row('ABC')
 
-    def fill_central_row(self,mode: str):
+    def fill_central_row(self, mode: str):
         for row_index, row in enumerate(self.central_rows):
             row.clear_widgets()
-            for button in self.central_rows_info[mode][row_index]:
-                button = make_square_icon_part_button(make_key_button_style(text=button))
+            for button_info in self.central_rows_info[mode][row_index]:
+                button = make_square_icon_part_button(make_key_button_style(text=button_info))
                 button.size_hint_x = 1.0
+                button.bind(on_release=lambda instance, button_text = copy.deepcopy(button_info): self.request_subscriber('key', button_text))
                 row.add_widget(button)
         # make buttons depends on KeyboardPanel mode (ABC, abc, 123, #+=)
+
+    def subscribe_on_state(self, callback: callable):
+        self.state_subscriber = callback
+
+    def subscribe_on_request(self, callback: callable):
+        self.request_subscriber = callback
