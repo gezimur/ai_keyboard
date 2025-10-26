@@ -1,3 +1,5 @@
+import copy
+
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 
@@ -18,7 +20,7 @@ class FeaturesPanel(BoxLayout):
             ['Scan', 'Tone', 'Settings']
         ]
 
-        self.back_button = make_round_icon_part_button(make_dark_key_button_style(text='<--'))
+        self.back_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/back.png'))
         self.back_button.bind(on_release=lambda instance: self.state_subscriber('keys + features')) #todo: back state
         
         self.top_layout = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44)
@@ -43,7 +45,7 @@ class FeaturesPanel(BoxLayout):
 
     def make_feature_button(self, text: str):
         feature_button = make_tablet_icon_part_button(make_dark_key_button_style(icon=f'icons/{text.lower()}.png', text=text))
-        feature_button.bind(on_release=lambda instance: self.state_subscriber('keys + feature tool', text))
+        feature_button.bind(on_release=lambda instance, button_text = copy.deepcopy(text): self.state_subscriber('keys + feature tool', clarification=button_text))
         return feature_button
 
     def subscribe_on_state(self, callback: callable):

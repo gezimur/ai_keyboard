@@ -5,6 +5,7 @@ from src.SuggestionsPanel import SuggestionsPanel
 from src.FeaturesMiniPanel import FeaturesMiniPanel
 from src.FeaturesPanel import FeaturesPanel
 from src.FeatureToolPanel import FeatureToolPanel
+from src.SelectLanguagePanel import SelectLanguagePanel
 
 # keyboard state: "keys + suggestions", "keys + features", "features", "keys + feature tool", "feature tool"
 # set_state(state: str):
@@ -33,11 +34,12 @@ class KeyboardMain(BoxLayout):
         self.features_mini_panel = None
         self.features_panel = None
         self.feature_tool_panel = None
+        self.select_language_panel = None
         
         # keyboard state: "keys + suggestions", "keys + features", "features", "keys + feature tool", "feature tool"
         self.set_state("keys + suggestions")
 
-    def set_state(self, state: str, clarification: str = ""):
+    def set_state(self, state: str, **args):
         self.clear_widgets()
 
         if state == "keys + suggestions":
@@ -46,30 +48,44 @@ class KeyboardMain(BoxLayout):
             self.features_mini_panel = None
             self.features_panel = None
             self.feature_tool_panel = None
+            self.select_language_panel = None
         elif state == "keys + features":
             self.keyboard_panel = self.make_keyboard_panel()
             self.suggestions_panel = None
             self.features_mini_panel = self.make_features_mini_panel()
             self.features_panel = None
             self.feature_tool_panel = None
+            self.select_language_panel = None
         elif state == "features":
             self.keyboard_panel = None
             self.suggestions_panel = None
             self.features_mini_panel = None
             self.features_panel = self.make_features_panel()
             self.feature_tool_panel = None
+            self.select_language_panel = None
         elif state == "keys + feature tool":
             self.keyboard_panel = self.make_keyboard_panel()
             self.suggestions_panel = None
             self.features_mini_panel = None
             self.features_panel = None
-            self.feature_tool_panel = self.make_feature_tool_panel(clarification)
+            self.feature_tool_panel = self.make_feature_tool_panel(**args)
+            self.select_language_panel = None
         elif state == "feature tool":
             self.keyboard_panel = None
             self.suggestions_panel = None
             self.features_mini_panel = None
             self.features_panel = None
-            self.feature_tool_panel = self.make_feature_tool_panel()
+            self.feature_tool_panel = self.make_feature_tool_panel(**args)
+            self.select_language_panel = None
+        elif state == "select translate language":
+            self.keyboard_panel = None
+            self.suggestions_panel = None
+            self.features_mini_panel = None
+            self.features_panel = None
+            self.feature_tool_panel = None
+            self.select_language_panel = self.make_select_language_panel(**args)
+        else:
+            raise ValueError(f"Invalid state: {state}")
 
         if self.suggestions_panel is not None:
             self.add_widget(self.suggestions_panel)
@@ -85,6 +101,9 @@ class KeyboardMain(BoxLayout):
 
         if self.keyboard_panel is not None:
             self.add_widget(self.keyboard_panel)
+
+        if self.select_language_panel is not None:
+            self.add_widget(self.select_language_panel)
 
     def make_keyboard_panel(self):
         if self.keyboard_panel is not None:
@@ -115,18 +134,25 @@ class KeyboardMain(BoxLayout):
         self.features_panel = self.make_smth_panel(FeaturesPanel)
         return self.features_panel
 
-    def make_feature_tool_panel(self, clarification: str = ""):
+    def make_feature_tool_panel(self, clarification: str = "", **args):
         if self.feature_tool_panel is not None:
             return self.feature_tool_panel
         
         if clarification == "":
             return None
 
-        self.feature_tool_panel = self.make_smth_panel(FeatureToolPanel)
+        self.feature_tool_panel = self.make_smth_panel(FeatureToolPanel, clarification=clarification, **args)
         return self.feature_tool_panel
 
-    def make_smth_panel(self, panel_type: type):
-        panel = panel_type()
+    def make_select_language_panel(self, **args):
+        if self.select_language_panel is not None:
+            return self.select_language_panel
+        
+        self.select_language_panel = self.make_smth_panel(SelectLanguagePanel, **args)
+        return self.select_language_panel
+
+    def make_smth_panel(self, panel_type: type, **args):
+        panel = panel_type(**args)
         panel.subscribe_on_state(self.set_state)
         panel.subscribe_on_request(self.proc_request)
         return panel

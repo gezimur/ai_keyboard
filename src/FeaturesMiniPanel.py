@@ -1,3 +1,5 @@
+import copy
+
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.metrics import dp
@@ -14,8 +16,7 @@ class FeaturesMiniPanel(BoxLayout):
         self.size_hint_y = None
         self.height = dp(32)
 
-        # Создаем кнопку "<--" с обработчиком возврата к suggestions
-        self.back_button = make_round_icon_part_button(make_dark_key_button_style(text='<--'))
+        self.back_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/back.png'))
         self.back_button.bind(on_release=lambda instance: self.state_subscriber('keys + suggestions'))
         self.add_widget(self.back_button)
         
@@ -56,7 +57,7 @@ class FeaturesMiniPanel(BoxLayout):
 
     def make_feature_button(self, text: str):
         feature_button = make_square_icon_part_button(make_float_button_style(icon=f'icons/{text.lower()}.png'))
-        feature_button.bind(on_release=lambda instance: self.state_subscriber('keys + feature tool', text))
+        feature_button.bind(on_release=lambda instance, button_text = copy.deepcopy(text): self.state_subscriber('keys + feature tool', clarification=button_text))
         return feature_button
 
     def subscribe_on_state(self, callback: callable):

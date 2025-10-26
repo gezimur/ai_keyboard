@@ -1,24 +1,78 @@
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 
-from src.ButtonWithIcon import make_round_icon_button, make_tablet_icon_button, make_tablet_icon_part_button, TextInputWithBorder
+from src.ButtonWithIcon import make_round_icon_button, make_tablet_icon_button, make_tablet_icon_part_button, make_round_icon_part_button, TextInputWithBorder
 from src.Styles import COLORS, make_accent_button_style, make_dark_key_button_style
 
-#todo maybe base feature tool panel class
+class TranslateLanguagesWidget(BoxLayout):
+    def __init__(self, lhs_language: str = "Auto", rhs_language: str = "English", **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = 'horizontal'
+        self.spacing = 6
+        self.padding = [0, 0, 0, 0]
+        
+        self.lhs_language_button = make_tablet_icon_part_button(make_dark_key_button_style(text=lhs_language))
+        self.lhs_language_button.bind(on_release=lambda instance: self.language_change_subscriber())
+        self.rhs_language_button = make_tablet_icon_part_button(make_dark_key_button_style(text=rhs_language))
+        self.rhs_language_button.bind(on_release=lambda instance: self.language_change_subscriber())
+
+        self.swap_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/swap.png'))
+        self.swap_button.bind(on_release=lambda instance: self.proc_swap_languages())
+
+        self.lhs_language_button.pos_hint = {'center_x': 0.5}
+        self.rhs_language_button.pos_hint = {'center_x': 0.5}
+        self.swap_button.pos_hint = {'center_x': 0.5}
+        self.lhs_language_button.size_hint_x = 1.0
+        self.rhs_language_button.size_hint_x = 1.0
+        self.swap_button.size_hint_x = 0.5
+
+        self.add_widget(self.lhs_language_button)
+        self.add_widget(self.swap_button)
+        self.add_widget(self.rhs_language_button)
+
+        self.bind(size=self.update_geometry)
+        self.update_geometry()
+
+    def update_geometry(self, *args):
+        avaliable_height = self.height - self.padding[1] - self.padding[3]
+        avaliable_width = self.width - self.padding[0] - self.padding[2]
+
+        self.swap_button.size_hint_x = avaliable_height / avaliable_width
+        self.lhs_language_button.size_hint_x = (avaliable_width - avaliable_height) / 2 / avaliable_width
+        self.rhs_language_button.size_hint_x = (avaliable_width - avaliable_height) / 2 / avaliable_width
+
+    def subscribe_on_language_change(self, callback: callable):
+        self.language_change_subscriber = callback
+    
+    def proc_swap_languages(self, *args):
+        lhs_text = self.lhs_language_button.style.text
+
+        self.lhs_language_button.set_text(self.rhs_language_button.style.text)
+        self.rhs_language_button.set_text(lhs_text)
+
 class FeatureToolPanel(BoxLayout):
-    def __init__(self, **kwargs):
+    def __init__(self, clarification: str, lhs_language: str = "Auto", rhs_language: str = "English", **kwargs):
         super().__init__(**kwargs)
         self.orientation = 'vertical'
         self.spacing = 10
         self.padding = [6, 0, 6, 6]
 
         self.top_layout = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44)
-        self.back_button = make_round_icon_button(make_dark_key_button_style(text='<--'))
-        self.back_button.bind(on_release=lambda instance: self.state_subscriber('keys + features')) #todo: back state
+        self.back_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/back.png'))
+        self.back_button.bind(on_release=lambda instance: self.state_subscriber('keys + features'))
         self.top_layout.add_widget(self.back_button)
         self.top_layout.add_widget(self.make_splitter())
-        self.top_layout.add_widget(Label(text='Feature Tool', font_size=16, color=COLORS['text_normal']))
-        self.top_layout.add_widget(BoxLayout(orientation='horizontal', size_hint_x=1.0))
+
+        if clarification == "Translate":
+            self.translate_languages_widget = TranslateLanguagesWidget(lhs_language=lhs_language, rhs_language=rhs_language)
+            self.translate_languages_widget.subscribe_on_language_change(lambda : self.state_subscriber('select translate language', 
+                                                                                lhs_language=self.translate_languages_widget.lhs_language_button.style.text, 
+                                                                                rhs_language=self.translate_languages_widget.rhs_language_button.style.text))
+            self.top_layout.add_widget(self.translate_languages_widget)
+        else:
+            self.top_layout.add_widget(Label(text=clarification, font_size=16, color=COLORS['text_normal']))
+            self.top_layout.add_widget(BoxLayout(orientation='horizontal', size_hint_x=1.0))
+
         self.add_widget(self.top_layout)
 
         self.text_input_wrapper = TextInputWithBorder(
@@ -36,12 +90,12 @@ class FeatureToolPanel(BoxLayout):
         
         self.bottom_layout = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44)
 
-        self.generate_button = make_round_icon_button(make_dark_key_button_style(text='R'))
+        self.generate_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/refresh.png'))
         self.generate_button.bind(on_release=self.proc_generate)
 
-        self.undo_button = make_round_icon_button(make_dark_key_button_style(text='Undo'))
+        self.undo_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/undo.png'))
         self.undo_button.bind(on_release=self.proc_undo)
-        self.redo_button = make_round_icon_button(make_dark_key_button_style(text='Redo'))
+        self.redo_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/redo.png'))
         self.redo_button.bind(on_release=self.proc_redo)
 
         self.space_widget = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None)
@@ -63,8 +117,8 @@ class FeatureToolPanel(BoxLayout):
         self.redo_button.size_hint_x = None
         self.apply_button.size_hint_x = None
 
-        self.redo_button.disabled = True
-        self.undo_button.disabled = True
+        self.redo_button.disabled = True #todo change icon to disabled
+        self.undo_button.disabled = True #todo change icon to disabled
 
         self.bind(size=self.update_geometry)
         self.update_geometry()
@@ -92,11 +146,6 @@ class FeatureToolPanel(BoxLayout):
             size_hint_x=0.2
         )
 
-    def make_feature_button(self, text: str):
-        feature_button = make_tablet_icon_part_button(make_dark_key_button_style(icon=f'icons/{text.lower()}.png', text=text))
-        feature_button.bind(on_release=lambda instance: self.state_subscriber('keys + feature tool', text))
-        return feature_button
-
     def proc_request(self, type: str, text: str):
         self.rewrite_last_in_cache |= self.cache_text()
         
@@ -105,9 +154,9 @@ class FeatureToolPanel(BoxLayout):
                 if self.text_input.text:
                     self.text_input.text = self.text_input.text[:-1]
             elif text == "Enter":
-                self.text_input.text.insert_text("\n")
+                self.text_input.insert_text("\n")
             elif text == "Space":
-                self.text_input.text.insert_text(" ")
+                self.text_input.insert_text(" ")
             else:
                 self.text_input.insert_text(text)
         elif type == "suggestion":
@@ -155,6 +204,12 @@ class FeatureToolPanel(BoxLayout):
         self.undo_button.disabled = not self.undo_cache
         self.redo_button.disabled = not self.redo_cache
         return cache_changed
+
+    def update_languages(self, lhs_language: str, rhs_language: str):
+        """Обновить выбранные языки в TranslateLanguagesWidget"""
+        if hasattr(self, 'translate_languages_widget'):
+            self.translate_languages_widget.lhs_language_button.set_text(lhs_language)
+            self.translate_languages_widget.rhs_language_button.set_text(rhs_language)
 
     def subscribe_on_state(self, callback: callable):
         self.state_subscriber = callback
