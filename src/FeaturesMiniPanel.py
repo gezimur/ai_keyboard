@@ -21,10 +21,10 @@ class FeaturesMiniPanel(BoxLayout):
         
         self.add_widget(self.make_splitter())
 
-        self.add_widget(self.make_feature_button('Tr'))
-        self.add_widget(self.make_feature_button('Aa'))
-        self.add_widget(self.make_feature_button('O'))
-        self.add_widget(self.make_feature_button('T'))
+        self.add_widget(self.make_feature_button('Translate'))
+        self.add_widget(self.make_feature_button('Correct'))
+        self.add_widget(self.make_feature_button('Emoji'))
+        self.add_widget(self.make_feature_button('Expand'))
 
         self.add_widget(self.make_splitter())
 
@@ -55,7 +55,7 @@ class FeaturesMiniPanel(BoxLayout):
         )
 
     def make_feature_button(self, text: str):
-        feature_button = make_square_icon_part_button(make_float_button_style(text=text))
+        feature_button = make_square_icon_part_button(make_float_button_style(icon=f'icons/{text.lower()}.png'))
         feature_button.bind(on_release=lambda instance: self.state_subscriber('keys + feature tool', text))
         return feature_button
 

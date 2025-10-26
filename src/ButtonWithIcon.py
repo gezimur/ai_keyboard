@@ -3,9 +3,10 @@ from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.image import Image
+from kivy.uix.textinput import TextInput
 from kivy.graphics import Color, RoundedRectangle, Line
 
-from src.Styles import StyleMap
+from src.Styles import StyleMap, COLORS
 
 class ButtonViewStrategy:
     def __init__(self):
@@ -72,10 +73,9 @@ class IconPartButton(BoxLayout, ButtonViewStrategy):
             return
         
         if self.icon is None:
-            self.icon = Image(source=icon, allow_stretch=True, keep_ratio=True, size_hint=(0.6, 0.6))
-            crutch_layout = BoxLayout(orientation='vertical')
-            crutch_layout.add_widget(self.icon)
-            self.add_widget(crutch_layout)
+            self.icon = Image(source=icon, allow_stretch=True, keep_ratio=True, size_hint=(0.5, 0.5))
+            self.icon.pos_hint = {'center_x': 0.9, 'center_y': 0.5}
+            self.add_widget(self.icon)
         else:
             self.icon.source = icon
 
@@ -243,3 +243,57 @@ def make_tablet_icon_part_button(style: StyleMap):
     button_view.set_icon(style.icon)
     button_view.set_text(style.text)
     return TabletButton(style, button_view)
+
+class TextInputWithBorder(BoxLayout):
+    """
+    Wrapper class for TextInput with rounded purple border
+    """
+    def __init__(self, border_color=None, border_width=2, border_radius=10, **kwargs):
+        super().__init__()
+        
+        self.padding = (5, 5)
+
+        # Extract TextInput specific kwargs
+        text_input_kwargs = {}
+        for key in ['multiline', 'font_size', 'foreground_color', 'background_color', 'hint_text', 'text']:
+            if key in kwargs:
+                text_input_kwargs[key] = kwargs.pop(key)
+        
+        # Set border properties
+        self.border_color = border_color if border_color else COLORS['accent_purple']
+        self.border_width = border_width
+        self.border_radius = border_radius
+        
+        # Create TextInput
+        self.text_input = TextInput(**text_input_kwargs)
+        
+        # Bind events for canvas updates
+        self.bind(pos=self.update_canvas)
+        self.bind(size=self.update_canvas)
+        
+        # Initialize canvas
+        self.init_canvas()
+        
+        # Add TextInput to layout
+        self.add_widget(self.text_input)
+    
+    def init_canvas(self):
+        """Initialize the canvas with border"""
+        with self.canvas.before:
+            self.border_color_obj = Color(*self.border_color)
+            self.border_line = Line(
+                rounded_rectangle=(
+                    self.x, self.y,
+                    self.width, self.height,
+                    self.border_radius
+                ),
+                width=self.border_width
+            )
+    
+    def update_canvas(self, *args):
+        """Update canvas when position or size changes"""
+        self.border_line.rounded_rectangle = (
+            self.x, self.y,
+            self.width, self.height,
+            self.border_radius
+        )

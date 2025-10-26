@@ -71,11 +71,11 @@ class KeyboardPanel(BoxLayout):
 
         self.space_button = make_square_icon_part_button(make_key_button_style(text='Space'))
         self.space_button.bind(on_release=lambda instance: self.request_subscriber('key', 'Space'))
-        self.space_button.size_hint_x = 5.0  # Широкая кнопка Space
+        self.space_button.size_hint_x = 3.0  # Широкая кнопка Space
 
-        self.enter_button = make_square_icon_button(make_dark_key_button_style(icon='icons/enter.png', text='Enter'))
+        self.enter_button = make_square_icon_part_button(make_dark_key_button_style(text='Enter'))
         self.enter_button.bind(on_release=lambda instance: self.request_subscriber('key', 'Enter'))
-        self.enter_button.size_hint_x = 1.1  # Средний размер
+        self.enter_button.size_hint_x = 2.0  # Средний размер
 
         self.rows.append(BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44))
         self.rows[3].add_widget(self.mode_switch_button)

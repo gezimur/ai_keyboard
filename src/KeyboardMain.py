@@ -98,6 +98,7 @@ class KeyboardMain(BoxLayout):
             return self.suggestions_panel
         
         self.suggestions_panel = self.make_smth_panel(SuggestionsPanel)
+        self.suggestions_panel.set_suggestions(['Hello', 'World', 'Python'])
         return self.suggestions_panel
 
     def make_features_mini_panel(self):
@@ -132,4 +133,7 @@ class KeyboardMain(BoxLayout):
 
     def proc_request(self, type: str, text: str):
         print(f"request: type={type}, text={text}")
+        if self.feature_tool_panel is not None and (type == "key" or type == "suggestion"):
+            self.feature_tool_panel.proc_request(type, text)
+        
         #todo: add processor

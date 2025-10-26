@@ -17,7 +17,7 @@ class SuggestionsPanel(BoxLayout):
         self.suggestion_layout = BoxLayout(orientation='horizontal', spacing=6, padding=[0, 0, 0, 0])
 
         # Создаем кнопку "AI" с обработчиком
-        ai_button = make_square_icon_button(make_accent_button_style(text='AI'))
+        ai_button = make_square_icon_button(make_accent_button_style(text='L'))
         ai_button.size_hint = (0.1, 1.0)
         ai_button.size = (dp(45), dp(32))
         ai_button.bind(on_release=lambda instance: self.state_subscriber('keys + features'))
