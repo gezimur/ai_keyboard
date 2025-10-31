@@ -191,7 +191,8 @@ class FeatureToolPanel(BoxLayout):
         cache_changed = False
         
         if not self.undo_cache:
-            self.undo_cache.append("")
+            self.undo_cache.append(self.text_input.text)
+            self.rewrite_last_in_cache = False
 
         if self.text_input.text != self.undo_cache[-1]:
             if self.rewrite_last_in_cache:
