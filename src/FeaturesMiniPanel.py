@@ -30,7 +30,7 @@ class FeaturesMiniPanel(BoxLayout):
         self.add_widget(self.make_splitter())
 
         # Создаем кнопку "***" с обработчиком перехода к feature_full
-        self.more_button = make_round_icon_part_button(make_dark_key_button_style(text='***'))
+        self.more_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/more.png'))
         self.more_button.bind(on_release=lambda instance: self.state_subscriber('features'))
         self.add_widget(self.more_button)
     

@@ -3,6 +3,7 @@ import copy
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.label import Label
+from kivy.uix.image import Image
 
 from src.ButtonWithIcon import make_round_icon_part_button, make_tablet_icon_part_button, make_square_icon_part_button
 from src.Styles import COLORS, make_dark_key_button_style, make_accent_button_style, make_float_button_style
@@ -52,10 +53,16 @@ class SelectLanguagePanel(BoxLayout):
         
         # Левая колонка (исходный язык)
         self.lhs_column = self.create_language_column("lhs", lhs_language)
+        self.lhs_column.size_hint_x = 0.45
         self.main_layout.add_widget(self.lhs_column)
+        
+        label_arrow = Image(source='icons/right-arrow.png')
+        label_arrow.size_hint_x = 0.1
+        self.main_layout.add_widget(label_arrow)
         
         # Правая колонка (целевой язык)
         self.rhs_column = self.create_language_column("rhs", rhs_language)
+        self.rhs_column.size_hint_x = 0.45
         self.main_layout.add_widget(self.rhs_column)
         
         self.add_widget(self.main_layout)
@@ -73,44 +80,45 @@ class SelectLanguagePanel(BoxLayout):
         self.back_button.size_hint_x = None
 
         self.selected_lhs_language = self.get_centered_language(self.lhs_column)
-        self.selected_lhs_language.button_view.text.color = COLORS['accent_purple']
+        self.selected_lhs_language.color = COLORS['accent_purple']
 
         self.selected_rhs_language = self.get_centered_language(self.rhs_column)
-        self.selected_rhs_language.button_view.text.color = COLORS['accent_purple']
+        self.selected_rhs_language.color = COLORS['accent_purple']
 
         self.bind(size=self.update_geometry)
+        self.bind(pos=self.update_geometry)
         self.update_geometry()
 
     def create_language_column(self, side, current_language):
         languages = self.languages if side == "lhs" else self.languages[1:]
         scroll_y = 1.0 - languages.index(current_language) / float(len(languages))
 
-        scroll_view = ScrollView(size_hint=(1, 1), scroll_y=copy.deepcopy(scroll_y))
-        languages_layout = BoxLayout(orientation='vertical', spacing=3, size_hint_y=None)
+        scroll_view = ScrollView(scroll_y=copy.deepcopy(scroll_y), size_hint_y=1.0)
+        languages_layout = BoxLayout(orientation='vertical', spacing=3)
         
         for language in languages:
-            lang_button = make_square_icon_part_button(make_float_button_style(text=language))
-            lang_button.button_view.text.font_size = 16
-            lang_button.size_hint_y = None
-            lang_button.height = 40
-            if lang_button.button_view.text.text == current_language:
-                lang_button.button_view.text.color = COLORS['accent_purple']
-            languages_layout.add_widget(lang_button)
-            languages_layout.height += 40 + 3
+            lang_label = Label(text=language, font_size=16, color=COLORS['text_normal'])
+            lang_label.size_hint_y = 0.1
+            if lang_label.text == current_language:
+                lang_label.color = COLORS['accent_purple']
+            languages_layout.add_widget(lang_label)
+            # languages_layout.height += 40 + 3
         
+        languages_layout.size_hint_y = 1.0 + lang_label.size_hint_y * len(languages)
+
         scroll_view.add_widget(languages_layout)
         scroll_view.bind(scroll_y=self.select_language)
         
         return scroll_view
 
     def select_language(self, *args):
-        self.selected_lhs_language.button_view.text.color = COLORS['text_normal']
+        self.selected_lhs_language.color = COLORS['text_normal']
         self.selected_lhs_language = self.get_centered_language(self.lhs_column)
-        self.selected_lhs_language.button_view.text.color = COLORS['accent_purple']
+        self.selected_lhs_language.color = COLORS['accent_purple']
 
-        self.selected_rhs_language.button_view.text.color = COLORS['text_normal']
+        self.selected_rhs_language.color = COLORS['text_normal']
         self.selected_rhs_language = self.get_centered_language(self.rhs_column)
-        self.selected_rhs_language.button_view.text.color = COLORS['accent_purple']
+        self.selected_rhs_language.color = COLORS['accent_purple']
     
     def get_centered_language(self, scroll_view: ScrollView):
         if not scroll_view.children:
@@ -120,7 +128,7 @@ class SelectLanguagePanel(BoxLayout):
         
         if not languages_layout.children:
             return None
-        
+
         scroll_y = min(1.0, max(0.0, scroll_view.scroll_y))
         current_button_index = int(scroll_y * (len(languages_layout.children) - 1))
         return languages_layout.children[current_button_index]
@@ -130,8 +138,8 @@ class SelectLanguagePanel(BoxLayout):
         self.state_subscriber(
             'keys + feature tool', 
             clarification="Translate",
-            lhs_language=self.selected_lhs_language.button_view.text.text,
-            rhs_language=self.selected_rhs_language.button_view.text.text
+            lhs_language=self.selected_lhs_language.text,
+            rhs_language=self.selected_rhs_language.text
         )
 
     def make_splitter(self):
@@ -146,6 +154,16 @@ class SelectLanguagePanel(BoxLayout):
     def update_geometry(self, *args):
         avaliable_height = self.top_layout.height - self.top_layout.padding[1] - self.top_layout.padding[3]
         self.back_button.size = (avaliable_height, avaliable_height)
+
+        languages_layout = self.lhs_column.children[0]
+        lang_label = languages_layout.children[0]
+        offset = self.main_layout.height / 2 - lang_label.height / 2 - languages_layout.spacing
+        languages_layout.padding = (0, offset, 0, offset)
+
+        languages_layout = self.rhs_column.children[0]
+        lang_label = languages_layout.children[0]
+        offset = self.main_layout.height / 2 - lang_label.height / 2 - languages_layout.spacing
+        languages_layout.padding = (0, offset, 0, offset)
 
     def subscribe_on_state(self, callback: callable):
         self.state_subscriber = callback

@@ -1,8 +1,9 @@
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 
-from src.ButtonWithIcon import make_round_icon_button, make_tablet_icon_button, make_tablet_icon_part_button, make_round_icon_part_button, TextInputWithBorder
+from src.ButtonWithIcon import make_tablet_icon_button, make_tablet_icon_part_button, make_round_icon_part_button
 from src.Styles import COLORS, make_accent_button_style, make_dark_key_button_style
+from src.TextInputWithBorder import TextInputWithBorder
 
 class TranslateLanguagesWidget(BoxLayout):
     def __init__(self, lhs_language: str = "Auto", rhs_language: str = "English", **kwargs):
@@ -92,6 +93,7 @@ class FeatureToolPanel(BoxLayout):
 
         self.generate_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/refresh.png'))
         self.generate_button.bind(on_release=self.proc_generate)
+        self.generate_button.disabled = True
 
         self.undo_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/undo.png'))
         self.undo_button.bind(on_release=self.proc_undo)
@@ -100,8 +102,8 @@ class FeatureToolPanel(BoxLayout):
 
         self.space_widget = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None)
 
-        self.apply_button = make_tablet_icon_button(make_accent_button_style(text='Apply'))
-        self.apply_button.bind(on_release=self.proc_generate) #todo: back state
+        self.apply_button = make_tablet_icon_button(make_accent_button_style(text=clarification))
+        self.apply_button.bind(on_release=self.proc_apply)
         
         self.bottom_layout.add_widget(self.generate_button)
         self.bottom_layout.add_widget(self.undo_button)
@@ -117,8 +119,8 @@ class FeatureToolPanel(BoxLayout):
         self.redo_button.size_hint_x = None
         self.apply_button.size_hint_x = None
 
-        self.redo_button.disabled = True #todo change icon to disabled
-        self.undo_button.disabled = True #todo change icon to disabled
+        self.redo_button.disabled = True
+        self.undo_button.disabled = True
 
         self.bind(size=self.update_geometry)
         self.update_geometry()
@@ -186,6 +188,16 @@ class FeatureToolPanel(BoxLayout):
         self.rewrite_last_in_cache = False
         self.cache_text()
         self.request_subscriber('generate', self.text_input.text)
+
+    def proc_apply(self, *args):
+        if self.apply_button.style.text == "Apply":
+            self.rewrite_last_in_cache = False
+            self.cache_text()
+            self.request_subscriber('apply', self.text_input.text)
+        else:
+            self.generate_button.disabled = False
+            self.apply_button.set_text("Apply")
+            self.proc_generate()
 
     def cache_text(self):
         cache_changed = False

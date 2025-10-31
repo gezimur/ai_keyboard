@@ -66,7 +66,7 @@ class KeyboardPanel(BoxLayout):
         self.mode_switch_button.size_hint_x = 1.0  # Компактный размер
         self.mode_switch_button.bind(on_release=self.proc_switch)
 
-        self.lang_button = make_square_icon_part_button(make_key_button_style(text='Lang'))
+        self.lang_button = make_square_icon_part_button(make_key_button_style(icon='icons/lang.png'))
         self.lang_button.size_hint_x = 1.0  # Компактный размер
 
         self.space_button = make_square_icon_part_button(make_key_button_style(text='Space'))
