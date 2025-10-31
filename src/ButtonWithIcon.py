@@ -107,6 +107,7 @@ class BaseButton(ButtonBehavior, Widget):
 
         self.bind(pos=self.update_canvas)
         self.bind(size=self.update_canvas)
+        self.bind(disabled=self.update_canvas)
 
         self.add_widget(self.button_view)
 
@@ -117,6 +118,13 @@ class BaseButton(ButtonBehavior, Widget):
     def update_canvas(self, *args):
         if self.style.background.hasColor(self.is_checked):
             self.background_color.rgba = self.style.background.getColor(self.is_checked)
+
+        icon_opacity = 1.0
+        if self.disabled:
+            icon_opacity = 0.5
+        
+        if self.button_view.icon is not None:
+            self.button_view.icon.opacity = icon_opacity
 
         self.button_view.pos = self.pos
         self.button_view.size = self.size
