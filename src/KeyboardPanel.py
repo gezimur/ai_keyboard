@@ -74,6 +74,7 @@ class KeyboardPanel(BoxLayout):
         self.space_button.size_hint_x = 3.0  # Широкая кнопка Space
 
         self.enter_button = make_square_icon_part_button(make_dark_key_button_style(text='Enter'))
+        self.enter_button.set_gradient_background(True)
         self.enter_button.bind(on_release=lambda instance: self.request_subscriber('key', 'Enter'))
         self.enter_button.size_hint_x = 2.0  # Средний размер
 

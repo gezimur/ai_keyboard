@@ -103,6 +103,7 @@ class FeatureToolPanel(BoxLayout):
         self.space_widget = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None)
 
         self.apply_button = make_tablet_icon_button(make_accent_button_style(text=clarification))
+        self.apply_button.set_gradient_background(True)
         self.apply_button.bind(on_release=self.proc_apply)
         
         self.bottom_layout.add_widget(self.generate_button)

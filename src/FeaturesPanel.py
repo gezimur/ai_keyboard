@@ -45,6 +45,7 @@ class FeaturesPanel(BoxLayout):
 
     def make_feature_button(self, text: str):
         feature_button = make_tablet_icon_part_button(make_dark_key_button_style(icon=f'icons/{text.lower()}.png', text=text))
+        feature_button.set_gradient_background(True)
         feature_button.bind(on_release=lambda instance, button_text = copy.deepcopy(text): self.state_subscriber('keys + feature tool', clarification=button_text))
         return feature_button
 

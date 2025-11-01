@@ -1,12 +1,47 @@
+from pickletools import bytes1, uint8
 from kivy.uix.button import ButtonBehavior
 from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.image import Image
-from kivy.uix.textinput import TextInput
-from kivy.graphics import Color, RoundedRectangle, Line
+from kivy.graphics import Color, RoundedRectangle
+from kivy.graphics.texture import Texture
 
 from src.Styles import StyleMap, COLORS
+
+def calc_pixel_color(color1: tuple, color2: tuple, size: tuple, i: int):
+    x = i % size[0]
+    y = i // size[0]
+
+    return [int((color1[0] * ((size[0] - x) + y) + color2[0] * (x + (size[1] - y)))  / (size[0] + size[1]) ), 
+            int((color1[1] * ((size[0] - x) + y) + color2[1] * (x + (size[1] - y)))  / (size[0] + size[1]) ), 
+            int((color1[2] * ((size[0] - x) + y) + color2[2] * (x + (size[1] - y)))  / (size[0] + size[1]) )]
+
+def make_diagonal_gradient_texture_background(color1: tuple, color2: tuple, size: tuple):
+    normalized_size = (int(size[0]), int(size[1]))
+    texture = Texture.create(size=normalized_size, colorfmt='rgb')
+
+    buf = [0] * int(normalized_size[1] * normalized_size[0] * 3)
+
+    colors_count = int(normalized_size[0] + normalized_size[1])
+    for i in range(colors_count):
+        R = int(255 * (color1[0] * i + color2[0] * (colors_count - i)) / colors_count)
+        G = int(255 * (color1[1] * i + color2[1] * (colors_count - i)) / colors_count)
+        B = int(255 * (color1[2] * i + color2[2] * (colors_count - i)) / colors_count)
+
+        y = normalized_size[1] - min(i, normalized_size[1])
+        x = max(0, i - normalized_size[1])
+
+        while y < normalized_size[1] and x < normalized_size[0]:
+            buf[int(y * normalized_size[0] * 3 + x * 3) : int(y * normalized_size[0] * 3 + x * 3 + 3)] = [R, G, B]
+            # buf[int(y * size[0] * 3 + x * 3)] = R
+            # buf[int(y * size[0] * 3 + x * 3 + 1)] = G
+            # buf[int(y * size[0] * 3 + x * 3 + 2)] = B
+            y += 1
+            x += 1
+
+    texture.blit_buffer(bytes(buf), colorfmt='rgb', bufferfmt='ubyte')
+    return texture
 
 class ButtonViewStrategy:
     def __init__(self):
@@ -98,6 +133,7 @@ class BaseButton(ButtonBehavior, Widget):
         super().__init__(**kwargs)
         self.style = style # background for presed / background for normal, text color, text size
         self.button_view = button_view
+        self.gradient = False
 
         # self.width = 20
         # self.height = 20
@@ -116,8 +152,13 @@ class BaseButton(ButtonBehavior, Widget):
             self.button_view.text.color = self.style.font_color.getColor(self.is_checked)
 
     def update_canvas(self, *args):
-        if self.style.background.hasColor(self.is_checked):
+
+        if self.gradient:
+            self.background_color.rgba = (1.0, 1.0, 1.0, 1.0)
+        elif self.style.background.hasColor(self.is_checked):
             self.background_color.rgba = self.style.background.getColor(self.is_checked)
+        else:
+            self.background_color.rgba = (0.0, 0.0, 0.0, 0.0)
 
         icon_opacity = 1.0
         if self.disabled:
@@ -145,6 +186,10 @@ class BaseButton(ButtonBehavior, Widget):
         self.is_checked = False
         self.update_canvas()
 
+    def set_gradient_background(self, gradient: bool):
+        self.gradient = gradient
+        self.update_canvas()
+
     #def subsctibe_on_click(): -> callbck on (type: str, text: str)
 
 class SquareButton(BaseButton):
@@ -157,6 +202,9 @@ class SquareButton(BaseButton):
         self.main_rect.pos = self.pos
         self.main_rect.size = self.size
         self.main_rect.radius = [self.height / 10]
+
+        if self.gradient:
+            self.main_rect.texture = make_diagonal_gradient_texture_background(COLORS['accent_purple'], COLORS['accent_cyan'], self.size)
 
         super().update_canvas() # update background color
 
@@ -182,6 +230,9 @@ class RoundButton(BaseButton):
         self.main_rect.pos = self.pos
         self.main_rect.size = (main_rect_size, main_rect_size)
         self.main_rect.radius = [main_rect_size / 2]
+        
+        if self.gradient:
+            self.main_rect.texture = make_diagonal_gradient_texture_background(COLORS['accent_purple'], COLORS['accent_cyan'], self.size)
 
         super().update_canvas() # update background color
 
@@ -205,6 +256,9 @@ class TabletButton(BaseButton):
         self.main_rect.pos = self.pos
         self.main_rect.size = self.size
         self.main_rect.radius = [self.height / 2]
+
+        if self.gradient:
+            self.main_rect.texture = make_diagonal_gradient_texture_background(COLORS['accent_purple'], COLORS['accent_cyan'], self.size)
 
         super().update_canvas() # update background color
 
