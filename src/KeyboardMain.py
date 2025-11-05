@@ -161,5 +161,3 @@ class KeyboardMain(BoxLayout):
         print(f"request: type={type}, text={text}")
         if self.feature_tool_panel is not None and (type == "key" or type == "suggestion"):
             self.feature_tool_panel.proc_request(type, text)
-        
-        #todo: add processor

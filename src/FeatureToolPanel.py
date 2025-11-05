@@ -1,7 +1,7 @@
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 
-from src.ButtonWithIcon import make_tablet_icon_button, make_tablet_icon_part_button, make_round_icon_part_button
+from src.ButtonWithIcon import make_tablet_icon_part_button, make_round_icon_part_button
 from src.Styles import COLORS, make_accent_button_style, make_dark_key_button_style
 from src.TextInputWithBorder import TextInputWithBorder
 
@@ -102,7 +102,7 @@ class FeatureToolPanel(BoxLayout):
 
         self.space_widget = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None)
 
-        self.apply_button = make_tablet_icon_button(make_accent_button_style(text=clarification))
+        self.apply_button = make_tablet_icon_part_button(make_accent_button_style(text=clarification))
         self.apply_button.set_gradient_background(True)
         self.apply_button.bind(on_release=self.proc_apply)
         

@@ -2,7 +2,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.metrics import dp
 
-from src.ButtonWithIcon import make_square_icon_button, make_square_icon_part_button
+from src.ButtonWithIcon import make_square_icon_part_button
 from src.Styles import make_accent_button_style, make_float_button_style
 
 class SuggestionsPanel(BoxLayout):
@@ -17,7 +17,7 @@ class SuggestionsPanel(BoxLayout):
         self.suggestion_layout = BoxLayout(orientation='horizontal', spacing=6, padding=[0, 0, 0, 0])
 
         # Создаем кнопку "AI" с обработчиком
-        ai_button = make_square_icon_button(make_accent_button_style(text='L'))
+        ai_button = make_square_icon_part_button(make_accent_button_style(text='L'))
         ai_button.set_gradient_background(True)
         ai_button.size_hint = (0.1, 1.0)
         ai_button.size = (dp(45), dp(32))

@@ -2,8 +2,8 @@ import copy
 
 from kivy.uix.boxlayout import BoxLayout
 
-from src.ButtonWithIcon import make_square_icon_button, make_square_icon_part_button
-from src.Styles import make_key_button_style, make_float_button_style, make_dark_key_button_style
+from src.ButtonWithIcon import make_square_icon_part_button
+from src.Styles import make_key_button_style, make_dark_key_button_style
 
 class KeyboardPanel(BoxLayout):
     def __init__(self, **kwargs):

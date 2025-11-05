@@ -43,101 +43,17 @@ def make_diagonal_gradient_texture_background(color1: tuple, color2: tuple, size
     texture.blit_buffer(bytes(buf), colorfmt='rgb', bufferfmt='ubyte')
     return texture
 
-class ButtonViewStrategy:
-    def __init__(self):
+class BaseButton(ButtonBehavior, BoxLayout):
+    def __init__(self, style: StyleMap, **kwargs):
+        super().__init__(**kwargs)
+        self.style = style # background for presed / background for normal, text color, text size
+        self.orientation = 'horizontal'
+
         self.icon = None
         self.text = None
 
-    def set_icon(self, icon: str):
-        pass
-    def set_text(self, text: str):
-        pass
-    def set_font_size(self, font_size: int):
-        pass
-
-class IconBackgroundButton(Widget, ButtonViewStrategy):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.bind(pos=self.update_canvas)
-        self.bind(size=self.update_canvas)
-
-    def update_canvas(self, *args):
-        if self.icon is not None:
-            self.icon.size = self.size
-            self.icon.pos = self.pos
-
-        if self.text is not None:
-            self.text.pos = self.pos
-            self.text.size = self.size
-
-    def set_icon(self, icon: str):
-        if not icon:
-            return
-
-        if self.icon is None:
-            self.icon = Image(source=icon, allow_stretch=True, keep_ratio=True, size_hint=(None, None))
-            self.add_widget(self.icon)
-        else:
-            self.icon.source = icon
-
-        self.update_canvas()
-        
-    def set_text(self, text: str):
-        if not text:
-            return
-
-        if self.text is None:
-            self.text = Label(text=text, size_hint=(None, None))
-            self.add_widget(self.text)
-        else:
-            self.text.text = text
-        
-        self.update_canvas()
-
-    def set_font_size(self, font_size: int):
-        if self.text is not None:
-            self.text.font_size = font_size
-
-class IconPartButton(BoxLayout, ButtonViewStrategy):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = 'horizontal'
-
-    def set_icon(self, icon: str):
-        if not icon:
-            return
-        
-        if self.icon is None:
-            self.icon = Image(source=icon, allow_stretch=True, keep_ratio=True, size_hint=(0.5, 0.5))
-            self.icon.pos_hint = {'center_x': 0.9, 'center_y': 0.5}
-            self.add_widget(self.icon)
-        else:
-            self.icon.source = icon
-
-    def set_text(self, text: str):
-        if not text:
-            return
-        
-        if self.text is None:
-            self.text = Label(text=text, size_hint=(1, 1))
-            self.add_widget(self.text)
-        else:
-            self.text.text = text
-
-    def set_font_size(self, font_size: int):
-        if self.text is not None:
-            self.text.font_size = font_size
-
-class BaseButton(ButtonBehavior, Widget):
-    def __init__(self, style: StyleMap, button_view: ButtonViewStrategy, **kwargs):
-        super().__init__(**kwargs)
-        self.style = style # background for presed / background for normal, text color, text size
-        self.button_view = button_view
         self.gradient = False
-
-        # self.width = 20
-        # self.height = 20
-        # self.size_hint=(1,1)
+        self.icon_gradient = False
 
         self.is_checked = False
 
@@ -145,14 +61,7 @@ class BaseButton(ButtonBehavior, Widget):
         self.bind(size=self.update_canvas)
         self.bind(disabled=self.update_canvas)
 
-        self.add_widget(self.button_view)
-
-        if self.button_view.text is not None:
-            self.button_view.set_font_size(self.style.font_size)
-            self.button_view.text.color = self.style.font_color.getColor(self.is_checked)
-
     def update_canvas(self, *args):
-
         if self.gradient:
             self.background_color.rgba = (1.0, 1.0, 1.0, 1.0)
         elif self.style.background.hasColor(self.is_checked):
@@ -160,23 +69,62 @@ class BaseButton(ButtonBehavior, Widget):
         else:
             self.background_color.rgba = (0.0, 0.0, 0.0, 0.0)
 
+        if self.icon is not None:
+            self.icon_background_rect.pos = self.pos
+            self.icon_background_rect.size = (self.height, self.height)
+            self.icon_background_rect.radius = [self.height / 2]
+            if self.icon_gradient:
+                self.icon_background_color.rgba = (1.0, 1.0, 1.0, 1.0)
+                self.icon_background_rect.texture = make_diagonal_gradient_texture_background(COLORS['accent_purple'], COLORS['accent_cyan'], self.size)
+            else:
+                self.icon_background_color.rgba = (0.0, 0.0, 0.0, 0.0)
+                self.icon_background_rect.texture = None
+
         icon_opacity = 1.0
         if self.disabled:
             icon_opacity = 0.5
         
-        if self.button_view.icon is not None:
-            self.button_view.icon.opacity = icon_opacity
-
-        self.button_view.pos = self.pos
-        self.button_view.size = self.size
+        if self.icon is not None:
+            self.icon.opacity = icon_opacity
 
     def set_text(self, text: str):
+        if not text:
+            return 
+
         self.style.text = text
-        self.button_view.set_text(text)
+        
+        if self.text is None:
+            self.text = Label(text=text, size_hint=(1, 1))
+            self.text.font_size = self.style.font_size
+            self.text.color = self.style.font_color.getColor(self.is_checked)
+            self.add_widget(self.text)
+        else:
+            self.text.text = text
+
+        self.update_canvas()
     
     def set_icon(self, icon: str):
+        if not icon:
+            return
+        
         self.style.icon = icon
-        self.button_view.set_icon(icon)
+
+        if self.icon is None:
+            self.icon = Image(source=icon, allow_stretch=True, keep_ratio=True, size_hint=(0.5, 0.5))
+            self.icon.pos_hint = {'center_y': 0.5} #'center_x': 0.9,
+
+            with self.icon.canvas.before:
+                self.icon_background_color = Color(1.0, 1.0, 1.0, 1.0)
+                self.icon_background_rect = RoundedRectangle(
+                                            pos=self.pos,
+                                            size=(self.height, self.height),
+                                            radius=[self.height / 2])
+
+            self.add_widget(self.icon)
+        else:
+            self.icon.source = icon
+        
+        self.update_canvas()
 
     def on_press(self):
         self.is_checked = True
@@ -190,13 +138,20 @@ class BaseButton(ButtonBehavior, Widget):
         self.gradient = gradient
         self.update_canvas()
 
+    def set_gradient_icon(self, gradient: bool):
+        self.icon_gradient = gradient
+        self.update_canvas()
+
     #def subsctibe_on_click(): -> callbck on (type: str, text: str)
 
 class SquareButton(BaseButton):
-    def __init__(self, style: StyleMap, button_view: ButtonViewStrategy, **kwargs):
-        super().__init__(style, button_view, **kwargs)
+    def __init__(self, style: StyleMap, **kwargs):
+        super().__init__(style, **kwargs)
 
         self.init_canvas()
+
+        self.set_icon(self.style.icon)
+        self.set_text(self.style.text)
 
     def update_canvas(self, *args):
         self.main_rect.pos = self.pos
@@ -218,11 +173,14 @@ class SquareButton(BaseButton):
                 radius=[self.height / 10])
 
 class RoundButton(BaseButton):
-    def __init__(self, style: StyleMap, button_view: ButtonViewStrategy, **kwargs):
-        super().__init__(style, button_view, **kwargs)
+    def __init__(self, style: StyleMap, **kwargs):
+        super().__init__(style, **kwargs)
         self.size_hint = (1.0, 1.0)
 
         self.init_canvas()
+
+        self.set_icon(self.style.icon)
+        self.set_text(self.style.text)
 
     def update_canvas(self, *args):
         main_rect_size = min(self.width, self.height)
@@ -247,10 +205,13 @@ class RoundButton(BaseButton):
                 radius=[main_rect_size / 2])
 
 class TabletButton(BaseButton):
-    def __init__(self, style: StyleMap, button_view: ButtonViewStrategy, **kwargs):
-        super().__init__(style, button_view, **kwargs)
+    def __init__(self, style: StyleMap, **kwargs):
+        super().__init__(style, **kwargs)
 
         self.init_canvas()
+
+        self.set_icon(self.style.icon)
+        self.set_text(self.style.text)
 
     def update_canvas(self, *args):
         self.main_rect.pos = self.pos
@@ -270,38 +231,11 @@ class TabletButton(BaseButton):
                 size=self.size,
                 radius=[self.height / 2])
 
-def make_square_icon_button(style: StyleMap):
-    button_view = IconBackgroundButton()
-    button_view.set_icon(style.icon)
-    button_view.set_text(style.text)
-    return SquareButton(style, button_view)
-
 def make_square_icon_part_button(style: StyleMap):
-    button_view = IconPartButton()
-    button_view.set_icon(style.icon)
-    button_view.set_text(style.text)
-    return SquareButton(style, button_view)
-
-def make_round_icon_button(style: StyleMap):
-    button_view = IconBackgroundButton()
-    button_view.set_icon(style.icon)
-    button_view.set_text(style.text)
-    return RoundButton(style, button_view)
+    return SquareButton(style)
 
 def make_round_icon_part_button(style: StyleMap):
-    button_view = IconPartButton()
-    button_view.set_icon(style.icon)
-    button_view.set_text(style.text)
-    return RoundButton(style, button_view)
-
-def make_tablet_icon_button(style: StyleMap):
-    button_view = IconBackgroundButton()
-    button_view.set_icon(style.icon)
-    button_view.set_text(style.text)
-    return TabletButton(style, button_view)
+    return RoundButton(style)
 
 def make_tablet_icon_part_button(style: StyleMap):
-    button_view = IconPartButton()
-    button_view.set_icon(style.icon)
-    button_view.set_text(style.text)
-    return TabletButton(style, button_view)
+    return TabletButton(style)
