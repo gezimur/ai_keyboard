@@ -6,21 +6,7 @@ from src.FeaturesMiniPanel import FeaturesMiniPanel
 from src.FeaturesPanel import FeaturesPanel
 from src.FeatureToolPanel import FeatureToolPanel
 from src.SelectLanguagePanel import SelectLanguagePanel
-
-# keyboard state: "keys + suggestions", "keys + features", "features", "keys + feature tool", "feature tool"
-# set_state(state: str):
-# 1. clear childer - self.clear_children()
-# 2. add new widgets - self.add_widget(self.make_smth_widget())
-# 
-# make_smth_widget():
-# 1. make new widget
-# 2. subscribe on next state
-# 3. subscribe on request (type: str, text: str): type: "text (key, suggestion)", "feature", "instruction" (maybe)
-
-#feature tool widget:
-# 1. cache inside to redo, undo
-# 2. send current text on switches (close, reopen, smth else) and accept request
-
+from src.AIProcessor import AIProcessor
 
 class KeyboardMain(BoxLayout):
     def __init__(self, **kwargs):
@@ -35,9 +21,16 @@ class KeyboardMain(BoxLayout):
         self.features_panel = None
         self.feature_tool_panel = None
         self.select_language_panel = None
+
+        self.ai_processor = AIProcessor()
+        self.ai_processor.subscribe_on_answer(self.proc_request)
+        self.ai_processor.start()
         
         # keyboard state: "keys + suggestions", "keys + features", "features", "keys + feature tool", "feature tool"
         self.set_state("keys + suggestions")
+
+    def prepare_to_close(self, *args):
+        self.ai_processor.prepare_to_close()
 
     def set_state(self, state: str, **args):
         self.clear_widgets()
@@ -166,4 +159,5 @@ class KeyboardMain(BoxLayout):
             self.feature_tool_panel.proc_request(type, text)
 
         elif type == 'generate':
-            self.feature_tool_panel.proc_request('error', 'no connection')
+            self.ai_processor.proc_request(type, text)
+            self.feature_tool_panel.proc_request('wait', '')

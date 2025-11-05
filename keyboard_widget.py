@@ -20,11 +20,15 @@ class KeyboardApp(App):
         # Set window size (390x384: 244 keyboard rows + 40 suggest bar + 34 safe area + margin)
         Window.size = (390, 384)
         Window.clearcolor = COLORS['bg_keyboard']
+
+        MainWidget = KeyboardMain()
+
+        Window.bind(on_request_close=MainWidget.prepare_to_close)
         
         # AI INTEGRATION HOOK: App initialization
         # Future: initialize ChatGPT API connection, load user preferences
         
-        return KeyboardMain()
+        return MainWidget
 
 
 # ==================== ENTRY POINT ====================
