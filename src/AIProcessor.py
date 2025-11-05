@@ -1,3 +1,5 @@
+from openai import OpenAI
+
 import threading
 import time
 import copy
@@ -16,6 +18,13 @@ class AIProcessor:
         self.subscriber = None
 
         self.interrupted = False
+
+        with open("api_key.txt") as f:
+            api_key = f.read()
+
+        self.client = OpenAI(
+            api_key= api_key.strip(),
+        )
 
     def prepare_to_close(self):
         self.interrupted = True
@@ -52,11 +61,16 @@ class AIProcessor:
 
     def make_ai_prompt(self, key: str, value: str):
         # todo implement
-        return key + ": " + value
+        return "Write some answer for this text: " + value #key + ": " + value
 
     def send_prompt(self, prompt: str):
-        time.sleep(1.0)
-        return "result", "AI generate smth for prompt: " + prompt
+        # todo try catch
+        response = self.client.responses.create(
+                                    model="gpt-4o-mini",
+                                    input=prompt
+                                )
+        answer = response.output_text
+        return "result", answer
 
     def write_answer(self, answer_type: str, answer: str):
         with self.answer_lock:
