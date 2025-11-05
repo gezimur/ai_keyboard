@@ -1,3 +1,4 @@
+from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 
@@ -51,12 +52,16 @@ class TranslateLanguagesWidget(BoxLayout):
         self.lhs_language_button.set_text(self.rhs_language_button.style.text)
         self.rhs_language_button.set_text(lhs_text)
 
-class FeatureToolPanel(BoxLayout):
+class FeatureToolPanel(Widget):
     def __init__(self, clarification: str, lhs_language: str = "Auto", rhs_language: str = "English", **kwargs):
         super().__init__(**kwargs)
-        self.orientation = 'vertical'
-        self.spacing = 10
-        self.padding = [6, 0, 6, 6]
+        
+        self.main_layout = BoxLayout()
+        self.main_layout.orientation = 'vertical'
+        self.main_layout.spacing = 10
+        self.main_layout.padding = [6, 0, 6, 6]
+
+        self.add_widget(self.main_layout)
 
         self.top_layout = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44)
         self.back_button = make_round_icon_part_button(make_dark_key_button_style(icon='icons/back.png'))
@@ -74,7 +79,7 @@ class FeatureToolPanel(BoxLayout):
             self.top_layout.add_widget(Label(text=clarification, font_size=16, color=COLORS['text_normal']))
             self.top_layout.add_widget(BoxLayout(orientation='horizontal', size_hint_x=1.0))
 
-        self.add_widget(self.top_layout)
+        self.main_layout.add_widget(self.top_layout)
 
         self.text_input_wrapper = TextInputWithBorder(
             border_color=COLORS['accent_purple'],
@@ -87,7 +92,7 @@ class FeatureToolPanel(BoxLayout):
             size_hint_y=1.0
         )
         self.text_input = self.text_input_wrapper.text_input
-        self.add_widget(self.text_input_wrapper)
+        self.main_layout.add_widget(self.text_input_wrapper)
         
         self.bottom_layout = BoxLayout(orientation='horizontal', spacing=6, size_hint_y=None, height=44)
 
@@ -112,7 +117,7 @@ class FeatureToolPanel(BoxLayout):
         self.bottom_layout.add_widget(self.space_widget)
         self.bottom_layout.add_widget(self.apply_button)
 
-        self.add_widget(self.bottom_layout)
+        self.main_layout.add_widget(self.bottom_layout)
 
         self.back_button.size_hint_x = None
         self.generate_button.size_hint_x = None
@@ -123,6 +128,7 @@ class FeatureToolPanel(BoxLayout):
         self.redo_button.disabled = True
         self.undo_button.disabled = True
 
+        self.bind(pos=self.update_geometry)
         self.bind(size=self.update_geometry)
         self.update_geometry()
 
@@ -132,6 +138,9 @@ class FeatureToolPanel(BoxLayout):
         self.rewrite_last_in_cache = False
 
     def update_geometry(self, *args):
+        self.main_layout.pos = self.pos
+        self.main_layout.size = self.size
+
         avaliable_height = self.bottom_layout.height - self.bottom_layout.padding[1] - self.bottom_layout.padding[3]
 
         self.back_button.size = (avaliable_height, avaliable_height)
@@ -162,10 +171,22 @@ class FeatureToolPanel(BoxLayout):
                 self.text_input.insert_text(" ")
             else:
                 self.text_input.insert_text(text)
+
+            self.rewrite_last_in_cache |= self.cache_text()
+
         elif type == "suggestion":
             self.text_input.insert_text(text)
+            self.rewrite_last_in_cache |= self.cache_text()
 
-        self.rewrite_last_in_cache |= self.cache_text()
+        elif type == "wait":
+           self.show_wait_label()
+        elif type == "error":
+           self.show_error_label(text)
+        elif type == "result":
+            self.hide_labels()
+            self.rewrite_last_in_cache = False
+            self.text_input.text = text
+            self.cache_text()
 
     def proc_undo(self, *args):
         self.proc_cache_containers(self.undo_cache, self.redo_cache)
@@ -220,10 +241,40 @@ class FeatureToolPanel(BoxLayout):
         return cache_changed
 
     def update_languages(self, lhs_language: str, rhs_language: str):
-        """Обновить выбранные языки в TranslateLanguagesWidget"""
         if hasattr(self, 'translate_languages_widget'):
             self.translate_languages_widget.lhs_language_button.set_text(lhs_language)
             self.translate_languages_widget.rhs_language_button.set_text(rhs_language)
+
+    def show_wait_label(self):
+        self.main_layout.disabled = True
+
+        self.info_label = BoxLayout()
+        self.info_label.orientation = 'vertical'
+        self.info_label.pos = (self.text_input_wrapper.x + self.text_input_wrapper.width / 2 - self.info_label.width / 2, 
+                                self.text_input_wrapper.y + self.text_input_wrapper.height / 2 - self.info_label.height / 2)
+        self.info_label.add_widget(Label(text="Wait..."))
+        self.add_widget(self.info_label)
+
+    def show_error_label(self, text):
+        self.main_layout.disabled = True
+
+        self.info_label = BoxLayout()
+        self.info_label.orientation = 'vertical'
+        self.info_label.pos = (self.text_input_wrapper.x + self.text_input_wrapper.width / 2 - self.info_label.width / 2, 
+                                self.text_input_wrapper.y + self.text_input_wrapper.height / 2 - self.info_label.height / 2)
+        self.info_label.add_widget(Label(text=text))
+
+        ok_button = make_tablet_icon_part_button(make_dark_key_button_style(text="Ok"))
+        ok_button.bind(on_release=self.hide_labels)
+
+        self.info_label.add_widget(ok_button)
+        self.add_widget(self.info_label)
+
+    def hide_labels(self, *args):
+        self.main_layout.disabled = False
+        if self.info_label is not None:
+            self.remove_widget(self.info_label)
+            self.info_label = None
 
     def subscribe_on_state(self, callback: callable):
         self.state_subscriber = callback

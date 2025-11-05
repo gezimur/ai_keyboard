@@ -159,5 +159,11 @@ class KeyboardMain(BoxLayout):
 
     def proc_request(self, type: str, text: str):
         print(f"request: type={type}, text={text}")
-        if self.feature_tool_panel is not None and (type == "key" or type == "suggestion"):
+        if self.feature_tool_panel is None:
+            return
+
+        if type == 'key' or type == 'suggestion' or type == 'error' or type == 'result':
             self.feature_tool_panel.proc_request(type, text)
+
+        elif type == 'generate':
+            self.feature_tool_panel.proc_request('error', 'no connection')
